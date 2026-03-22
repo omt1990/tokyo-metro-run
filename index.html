@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>東京メトロラン</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Bebas+Neue&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-height:100vh}
+:root{
+  --red:#e60012;--orange:#f68b1e;--yellow:#f5c518;--green:#00a650;
+  --cyan:#00b2d6;--purple:#8f76d6;--bg:#0a0e1a;--card:#141824;
+  --card2:#1a1f2e;--border:rgba(255,255,255,0.1);--muted:#8892a4;--gold:#f5c518
+}
+.wrap{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.hdr{background:#141824;border-bottom:1px solid var(--border);padding:10px 14px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;
+  background:linear-gradient(90deg,#e60012,#f68b1e,#f5c518);-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;background-clip:text}
+.timer{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);line-height:1;text-align:right}
+.timer.end{color:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.phase-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700}
+.phase-am{background:rgba(0,178,214,.15);color:var(--cyan);border:1px solid rgba(0,178,214,.3)}
+.phase-lunch{background:rgba(230,0,18,.15);color:var(--red);border:1px solid rgba(230,0,18,.3)}
+.phase-pm{background:rgba(245,197,24,.15);color:var(--yellow);border:1px solid rgba(245,197,24,.3)}
+.sbar{background:var(--card);padding:8px 14px;display:flex;gap:6px;border-bottom:1px solid var(--border)}
+.si{flex:1;background:var(--card2);border-radius:8px;padding:7px 8px;text-align:center;border:1px solid var(--border)}
+.sl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.sv{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1.1;color:var(--gold)}
+.sv.b{color:var(--cyan)}.sv.g{color:var(--green)}.sv.r{color:var(--red)}
+.nav{display:flex;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto}
+.nt{flex:0 0 auto;padding:9px 10px;text-align:center;font-size:9px;color:var(--muted);cursor:pointer;
+  border:none;background:none;border-bottom:2px solid transparent;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:2px;font-family:'Noto Sans JP',sans-serif;min-width:60px}
+.nt.on{color:var(--yellow);border-bottom-color:var(--yellow)}
+.ni{font-size:16px}
+.cnt{flex:1;padding:14px;overflow-y:auto}
+.sec{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:14px}
+.btabs{display:flex;gap:6px;margin-bottom:12px}
+.btab{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);
+  font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;
+  font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
+.btab.on.station{border-color:var(--cyan);color:var(--cyan);background:rgba(0,178,214,.08)}
+.btab.on.mission{border-color:var(--purple);color:var(--purple);background:rgba(143,118,214,.08)}
+.bgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--border);
+  border:1px solid var(--border);border-radius:10px;overflow:hidden;padding:2px}
+.bcell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--card2);border-radius:4px;padding:2px;position:relative;overflow:hidden}
+.bcell.hit{background:#1a3a1a;border:1px solid var(--green)}
+.bcell.hit::after{content:'✓';position:absolute;top:1px;right:2px;font-size:7px;color:var(--green)}
+.bcell.pend{background:#2a1a00;border:1px solid var(--orange)}
+.bcell.pend::after{content:'⏳';position:absolute;top:1px;right:2px;font-size:7px}
+.bcell.free{background:#1a1a00;border:1px solid var(--yellow)}
+.bcell.bline{background:#0d1f2d;border:1px solid var(--cyan)}
+.bcell.bline.mb{background:#1a0d2d;border:1px solid var(--purple)}
+.bln{font-size:7px;color:var(--muted);line-height:1;text-align:center}
+.bcell.hit .bln{color:var(--green)}
+.bnm{font-size:8px;font-weight:700;color:#e8eaf0;line-height:1.2;text-align:center;word-break:break-all}
+.bcell.hit .bnm{color:#7fdd7f}
+.bcell.free .bnm{color:var(--yellow);font-size:7px}
+.bcell.bline .bnm{color:var(--cyan)}
+.bcell.bline.mb .bnm{color:var(--purple)}
+.bcell.pend .bnm{color:var(--orange)}
+.score-detail{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.score-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.score-row:last-child{border-bottom:none;font-weight:700;color:#e8eaf0;margin-top:4px;padding-top:8px}
+.score-row .label{color:var(--muted)}
+.score-row .val{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--gold)}
+.score-row .val.neg{color:var(--red)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;
+  display:flex;align-items:flex-end;justify-content:center}
+.bottom-sheet{background:var(--card);border-radius:16px 16px 0 0;padding:20px 18px 32px;
+  width:100%;max-width:430px;max-height:90vh;overflow-y:auto}
+.mission-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;
+  padding:12px;margin-bottom:8px;cursor:pointer;transition:all .15s;display:flex;align-items:flex-start;gap:10px}
+.mission-item.done{border-color:var(--green);background:rgba(0,166,80,.06)}
+.mission-item.pend{border-color:var(--orange);background:rgba(246,139,30,.06)}
+.mission-num{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--muted);flex-shrink:0;width:24px;line-height:1}
+.mission-item.done .mission-num{color:var(--green)}
+.mission-item.pend .mission-num{color:var(--orange)}
+.mission-body{flex:1}
+.mission-title{font-size:12px;font-weight:700;line-height:1.5}
+.mission-evidence{font-size:10px;color:var(--muted);margin-top:3px}
+.mission-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;flex-shrink:0;margin-top:2px}
+.ms-none{background:var(--card);color:var(--muted);border:1px solid var(--border)}
+.ms-pend{background:rgba(246,139,30,.15);color:var(--orange)}
+.ms-done{background:rgba(0,166,80,.15);color:var(--green)}
+.ms-rej{background:rgba(230,0,18,.15);color:var(--red)}
+.photo-area{border:1.5px dashed var(--border);border-radius:10px;padding:14px;
+  text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.photo-area.has{border-color:var(--green);border-style:solid}
+.photo-preview{width:100%;max-height:160px;object-fit:cover;border-radius:8px;display:block}
+.photo-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.btn{padding:12px;border-radius:10px;border:none;font-size:14px;font-weight:700;
+  font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .2s;width:100%;margin-top:8px}
+.btn.pri{background:linear-gradient(135deg,var(--yellow),#c9a200);color:#000}
+.btn.grn{background:linear-gradient(135deg,var(--green),#005c2e);color:#fff}
+.btn.sec{background:var(--card2);color:var(--muted);border:1px solid var(--border)}
+.btn.red{background:linear-gradient(135deg,var(--red),#8b0000);color:#fff}
+.btn:active{transform:scale(.98)}
+.transfer-btn{width:100%;padding:13px;border-radius:10px;border:2px dashed var(--orange);
+  background:rgba(246,139,30,.06);color:var(--orange);font-size:14px;font-weight:700;
+  font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-bottom:8px}
+.lsel{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.lbtn{padding:4px 9px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;
+  border:1px solid transparent;transition:all .15s;font-family:'Noto Sans JP',sans-serif}
+.sinp{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;
+  padding:9px 12px;color:#e8eaf0;font-size:13px;font-family:'Noto Sans JP',sans-serif;
+  margin-bottom:8px;outline:none}
+.sinp:focus{border-color:rgba(255,255,255,.3)}
+.sinp::placeholder{color:var(--muted)}
+.slist{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;max-height:200px;overflow-y:auto}
+.sbtn{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 9px;
+  text-align:left;cursor:pointer;display:flex;align-items:center;gap:6px;
+  color:#e8eaf0;font-size:11px;font-family:'Noto Sans JP',sans-serif}
+.sbtn.oncard{border-color:rgba(0,178,214,.5);background:rgba(0,178,214,.06)}
+.sbtn.done{opacity:.4}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.rank{background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px}
+.rh{padding:8px 14px;background:var(--card2);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)}
+.rrow{display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);gap:10px}
+.rrow:last-child{border-bottom:none}
+.rrow.me{background:rgba(245,197,24,.06);border-left:3px solid var(--yellow)}
+.rn{font-family:'Bebas Neue',sans-serif;font-size:20px;width:24px;color:var(--muted);flex-shrink:0}
+.rn.g{color:var(--gold)}.rn.s{color:#b0b8c8}.rn.b{color:var(--orange)}
+.rt{flex:1}.rtn{font-weight:700;font-size:13px;display:flex;align-items:center;gap:5px}
+.rtd{font-size:10px;color:var(--muted);margin-top:2px}
+.rs{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--gold)}
+.li{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.li:last-child{border-bottom:none}
+.lic{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:13px;flex-shrink:0;background:var(--card2);border:1px solid var(--border)}
+.lic.s{border-color:var(--green)}.lic.bingo{border-color:var(--cyan)}
+.lic.st{border-color:var(--yellow)}.lic.ev{border-color:var(--red)}
+.lic.ms{border-color:var(--purple)}.lic.pen{border-color:var(--orange)}
+.lb{flex:1}.lt{font-size:12px;font-weight:700}.ls{font-size:10px;color:var(--muted);margin-top:1px}
+.ltm{font-family:'Bebas Neue',sans-serif;font-size:13px;color:var(--muted);flex-shrink:0}
+.evbanner{border-radius:10px;padding:10px 12px;margin:6px 14px;
+  display:flex;align-items:center;gap:10px;animation:slideIn .4s ease-out}
+.evbanner.active{background:rgba(230,0,18,.12);border:1px solid var(--red)}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.goal-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.goal-ok{border-color:var(--green);background:rgba(0,166,80,.06)}
+.goal-ng{border-color:var(--red);background:rgba(230,0,18,.06)}
+.goal-stations{display:flex;flex-wrap:wrap;gap:5px}
+.goal-st-tag{font-size:10px;padding:3px 8px;border-radius:12px;background:rgba(0,166,80,.15);color:var(--green);border:1px solid rgba(0,166,80,.3)}
+.admin-tabs{display:flex;gap:6px;margin-bottom:12px}
+.admin-tab{flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:var(--card2);
+  font-size:11px;font-weight:700;cursor:pointer;text-align:center;font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
+.admin-tab.on{border-color:var(--red);color:var(--red);background:rgba(230,0,18,.08)}
+.approval-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px}
+.appr-btns{display:flex;gap:6px;margin-top:8px}
+.appr-btn{flex:1;padding:8px;border-radius:8px;border:none;font-size:12px;font-weight:700;
+  font-family:'Noto Sans JP',sans-serif;cursor:pointer}
+.appr-ok{background:rgba(0,166,80,.2);color:var(--green);border:1px solid rgba(0,166,80,.4)}
+.appr-ng{background:rgba(230,0,18,.15);color:var(--red);border:1px solid rgba(230,0,18,.3)}
+.center-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:600;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:360px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:14px;text-align:center}
+.modal-input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;
+  padding:11px;color:#e8eaf0;font-size:15px;font-family:'Noto Sans JP',sans-serif;
+  outline:none;text-align:center;letter-spacing:4px;margin-bottom:8px}
+.modal-input.left{text-align:left;letter-spacing:normal;font-size:13px}
+.color-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.cswatch{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.cswatch.sel{border-color:#fff;transform:scale(1.15)}
+.code-display{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px}
+.code-big{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:8px;color:var(--yellow);line-height:1}
+.rc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px}
+.rct{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.rcb{font-size:11px;color:var(--muted);line-height:1.9}
+.stb{width:100%;font-size:11px;border-collapse:collapse}
+.stb tr{border-bottom:1px solid var(--border)}
+.stb tr:last-child{border-bottom:none}
+.stb td{padding:5px 4px;color:var(--muted)}
+.stb td:last-child{text-align:right;font-weight:700;font-family:'Bebas Neue',sans-serif;font-size:14px}
+.stb .pos{color:var(--yellow)}.stb .neg{color:var(--red)}
+.tcon{position:fixed;top:65px;left:50%;transform:translateX(-50%);z-index:9999;
+  display:flex;flex-direction:column;gap:7px;width:360px;max-width:92vw;pointer-events:none}
+.toast{background:var(--card);border-radius:10px;padding:10px 14px;border:1px solid;
+  animation:tin .3s ease-out;font-size:12px;display:flex;align-items:center;gap:9px}
+.toast.ok{border-color:var(--green)}.toast.bingo{border-color:var(--cyan)}
+.toast.warn{border-color:var(--orange)}.toast.ev{border-color:var(--red)}
+.toast.ms{border-color:var(--purple)}
+@keyframes tin{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:12px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700}
+.badge-pend{background:rgba(246,139,30,.15);color:var(--orange);border:1px solid rgba(246,139,30,.3)}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--yellow);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback,useMemo,useRef} = React;
+
+// ── FIREBASE CONFIG ──
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDTMKfcvsKPOvMrHcQmewhWe55ejATpQNY",
+  authDomain: "tokyo-metro-run.firebaseapp.com",
+  databaseURL: "https://tokyo-metro-run-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tokyo-metro-run",
+  storageBucket: "tokyo-metro-run.firebasestorage.app",
+  messagingSenderId: "812833586042",
+  appId: "1:812833586042:web:42e1fc7ed04bfd5d8634c3"
+};
+
+// ── FIREBASE REALTIME DB HELPERS ──
+let firebaseApp = null;
+let db = null;
+
+async function initFirebase() {
+  if (db) return db;
+  const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+  const { getDatabase, ref, set, get, onValue, update } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
+  firebaseApp = initializeApp(FIREBASE_CONFIG);
+  db = getDatabase(firebaseApp);
+  window._fbRef = ref;
+  window._fbSet = set;
+  window._fbGet = get;
+  window._fbOnValue = onValue;
+  window._fbUpdate = update;
+  return db;
+}
+
+async function fbSave(code, state) {
+  await initFirebase();
+  // 写真データはFirebaseに直接保存するには大きすぎるのでbase64をlocalStorageへ退避
+  const stateToSave = stripPhotos(state);
+  await window._fbSet(window._fbRef(db, `games/${code}`), stateToSave);
+  // 写真はlocalStorageに保存
+  savePhotosLocally(code, state);
+}
+
+async function fbLoad(code) {
+  await initFirebase();
+  const snap = await window._fbGet(window._fbRef(db, `games/${code}`));
+  if (!snap.exists()) return null;
+  const state = snap.val();
+  return mergePhotosFromLocal(code, state);
+}
+
+function fbSubscribe(code, callback) {
+  if (!db) return () => {};
+  const unsubscribe = window._fbOnValue(window._fbRef(db, `games/${code}`), (snap) => {
+    if (snap.exists()) {
+      const state = snap.val();
+      callback(mergePhotosFromLocal(code, state));
+    }
+  });
+  return unsubscribe;
+}
+
+// 写真(base64)はlocalStorageに保存（Firebaseの1MB制限対策）
+function stripPhotos(state) {
+  const s = JSON.parse(JSON.stringify(state));
+  s.teams = s.teams.map(t => ({
+    ...t,
+    logs: t.logs.map(l => ({...l, photo: l.photo ? '__local__' : null}))
+  }));
+  if (s.pendingApprovals) {
+    s.pendingApprovals = s.pendingApprovals.map(a => ({...a, photo: a.photo ? '__local__' : null}));
+  }
+  return s;
+}
+
+function savePhotosLocally(code, state) {
+  const photos = {};
+  state.teams.forEach(t => {
+    t.logs.forEach((l, i) => {
+      if (l.photo && l.photo !== '__local__') photos[`log_${t.id}_${i}`] = l.photo;
+    });
+  });
+  if (state.pendingApprovals) {
+    state.pendingApprovals.forEach(a => {
+      if (a.photo && a.photo !== '__local__') photos[`appr_${a.id}`] = a.photo;
+    });
+  }
+  try { localStorage.setItem(`photos_${code}`, JSON.stringify(photos)); } catch(e) {}
+}
+
+function mergePhotosFromLocal(code, state) {
+  let photos = {};
+  try { photos = JSON.parse(localStorage.getItem(`photos_${code}`) || '{}'); } catch(e) {}
+  const s = JSON.parse(JSON.stringify(state));
+  s.teams = (s.teams || []).map(t => ({
+    ...t,
+    logs: (t.logs || []).map((l, i) => ({
+      ...l,
+      photo: l.photo === '__local__' ? (photos[`log_${t.id}_${i}`] || null) : l.photo
+    }))
+  }));
+  if (s.pendingApprovals) {
+    s.pendingApprovals = s.pendingApprovals.map(a => ({
+      ...a,
+      photo: a.photo === '__local__' ? (photos[`appr_${a.id}`] || null) : a.photo
+    }));
+  }
+  return s;
+}
+
+// ── CONSTANTS ──
+const TEAM_COLORS=['#e60012','#f68b1e','#f5c518','#00a650','#00b2d6','#8f76d6','#e8508a','#009bbf'];
+const METRO_LINES={
+  ginza:{name:'銀座線',color:'#f5a623',short:'G',op:'metro'},
+  marunouchi:{name:'丸ノ内線',color:'#e60012',short:'M',op:'metro'},
+  hibiya:{name:'日比谷線',color:'#9b9ea0',short:'H',op:'metro'},
+  tozai:{name:'東西線',color:'#009bbf',short:'T',op:'metro'},
+  chiyoda:{name:'千代田線',color:'#00bb85',short:'C',op:'metro'},
+  yurakucho:{name:'有楽町線',color:'#c1a900',short:'Y',op:'metro'},
+  hanzomon:{name:'半蔵門線',color:'#8f76d6',short:'Z',op:'metro'},
+  namboku:{name:'南北線',color:'#00ac9b',short:'N',op:'metro'},
+  fukutoshin:{name:'副都心線',color:'#9c5e31',short:'F',op:'metro'},
+  asakusa:{name:'浅草線',color:'#ef4e39',short:'A',op:'toei'},
+  mita:{name:'三田線',color:'#0080c6',short:'I',op:'toei'},
+  shinjuku_toei:{name:'新宿線',color:'#6cbb5a',short:'S',op:'toei'},
+  oedo:{name:'大江戸線',color:'#b5006e',short:'E',op:'toei'},
+};
+const STATIONS=[
+  {id:'asakusa',name:'浅草',line:'ginza'},{id:'ueno',name:'上野',line:'ginza'},
+  {id:'ginza',name:'銀座',line:'ginza'},{id:'shimbashi',name:'新橋',line:'ginza'},
+  {id:'toranomon',name:'虎ノ門',line:'ginza'},{id:'nihonbashi',name:'日本橋',line:'ginza'},
+  {id:'shinjuku',name:'新宿',line:'marunouchi'},{id:'ikebukuro',name:'池袋',line:'marunouchi'},
+  {id:'otemachi',name:'大手町',line:'marunouchi'},{id:'tokyo',name:'東京',line:'marunouchi'},
+  {id:'yotsuya',name:'四ツ谷',line:'marunouchi'},{id:'honancho',name:'方南町',line:'marunouchi'},
+  {id:'akihabara',name:'秋葉原',line:'hibiya'},{id:'hibiya',name:'日比谷',line:'hibiya'},
+  {id:'roppongi',name:'六本木',line:'hibiya'},{id:'ebisu',name:'恵比寿',line:'hibiya'},
+  {id:'naka-meguro',name:'中目黒',line:'hibiya'},{id:'kayabacho',name:'茅場町',line:'hibiya'},
+  {id:'kitasenju',name:'北千住',line:'hibiya'},{id:'tsukiji',name:'築地',line:'hibiya'},
+  {id:'nakano',name:'中野',line:'tozai'},{id:'takadanobaba',name:'高田馬場',line:'tozai'},
+  {id:'kudanshita',name:'九段下',line:'tozai'},{id:'monzen',name:'門前仲町',line:'tozai'},
+  {id:'nishi-funabashi',name:'西船橋',line:'tozai'},{id:'koenji',name:'高円寺',line:'tozai'},
+  {id:'omote-sando',name:'表参道',line:'chiyoda'},{id:'yoyogi-uehara',name:'代々木上原',line:'chiyoda'},
+  {id:'meiji-jingumae',name:'明治神宮前',line:'chiyoda'},{id:'nogizaka',name:'乃木坂',line:'chiyoda'},
+  {id:'akasaka',name:'赤坂',line:'chiyoda'},{id:'yushima',name:'湯島',line:'chiyoda'},
+  {id:'yurakucho',name:'有楽町',line:'yurakucho'},{id:'shiodome',name:'汐留',line:'yurakucho'},
+  {id:'tatsumi',name:'辰巳',line:'yurakucho'},{id:'shinkiba',name:'新木場',line:'yurakucho'},
+  {id:'nagatacho',name:'永田町',line:'hanzomon'},{id:'aoyama-itchome',name:'青山一丁目',line:'hanzomon'},
+  {id:'shibuya',name:'渋谷',line:'hanzomon'},{id:'oshiage',name:'押上',line:'hanzomon'},
+  {id:'korakuen',name:'後楽園',line:'namboku'},{id:'azabu-juban',name:'麻布十番',line:'namboku'},
+  {id:'shirokanedai',name:'白金台',line:'namboku'},{id:'roppongi-1chome',name:'六本木一丁目',line:'namboku'},
+  {id:'meguro',name:'目黒',line:'namboku'},
+  {id:'sangen-jaya',name:'三軒茶屋',line:'fukutoshin'},{id:'kagurazaka',name:'神楽坂',line:'fukutoshin'},
+  {id:'zoshigaya',name:'雑司が谷',line:'fukutoshin'},
+  {id:'ryogoku',name:'両国',line:'oedo'},{id:'kiyosumi-shirakawa',name:'清澄白河',line:'oedo'},
+  {id:'ueno-okachimachi',name:'上野御徒町',line:'oedo'},{id:'morishita',name:'森下',line:'oedo'},
+  {id:'shinjuku-sanchome',name:'新宿三丁目',line:'shinjuku_toei'},
+  {id:'jimbocho',name:'神保町',line:'shinjuku_toei'},{id:'iwamoto-cho',name:'岩本町',line:'shinjuku_toei'},
+  {id:'mita-st',name:'三田',line:'mita'},{id:'sengakuji',name:'泉岳寺',line:'asakusa'},
+  {id:'higashi-ginza',name:'東銀座',line:'asakusa'},{id:'ningyocho',name:'人形町',line:'asakusa'},
+];
+const TALL_STATIONS=new Set(['shinjuku','ikebukuro','shibuya','roppongi','tokyo','otemachi','hibiya',
+  'yurakucho','shimbashi','shiodome','nagatacho','aoyama-itchome','omote-sando','akasaka','nogizaka',
+  'oshiage','kitasenju','azabu-juban','roppongi-1chome','toranomon','mita-st','sengakuji','higashi-ginza',
+  'ebisu','naka-meguro','meguro','shinkiba','tatsumi']);
+const MISSIONS=[
+  {id:'m01',text:'その駅名が入った飲食店に入る（チェーン除く）',evidence:'写真',icon:'🍜'},
+  {id:'m02',text:'御朱印をもらう',evidence:'御朱印帳 or 紙',icon:'⛩️'},
+  {id:'m03',text:'50年以上続く老舗を訪問',evidence:'外観＋創業年看板',icon:'🏮'},
+  {id:'m04',text:'地域限定デザインのマンホールを撮影',evidence:'写真',icon:'🔵'},
+  {id:'m05',text:'駅名が商品名に含まれるお菓子を購入',evidence:'パッケージ写真',icon:'🍡'},
+  {id:'m06',text:'プライム企業の本社を撮影',evidence:'看板＋建物',icon:'🏢'},
+  {id:'m07',text:'100年以上続く学校を訪問',evidence:'校門＋表札',icon:'🏫'},
+  {id:'m08',text:'プロスポーツチームの本拠地を撮影',evidence:'外観',icon:'🏟️'},
+  {id:'m09',text:'美術館・博物館など限定クリアファイルを購入',evidence:'商品＋袋',icon:'🖼️'},
+  {id:'m10',text:'創業100年以上のホテルまたは旅館を撮影',evidence:'建物外観',icon:'🏨'},
+  {id:'m11',text:'色の入った駅名の駅',evidence:'案内板写真',icon:'🎨'},
+  {id:'m12',text:'重要文化財を撮影',evidence:'案内板写真',icon:'🏯'},
+  {id:'m13',text:'飲料以外を売る自販機を撮影',evidence:'写真',icon:'🤖'},
+  {id:'m14',text:'坂の案内板を撮影',evidence:'写真',icon:'⛰️'},
+  {id:'m15',text:'その駅にしかないローカルカフェで休憩',evidence:'外観',icon:'☕'},
+  {id:'m16',text:'Google評価★1点台（30件以上）の店を撮影',evidence:'店頭＋スクショ',icon:'⭐'},
+  {id:'m17',text:'閉店のお知らせ貼り紙を撮影',evidence:'写真',icon:'📝'},
+  {id:'m18',text:'横丁でお酒を飲む（看板＋乾杯写真）',evidence:'写真',icon:'🍺'},
+  {id:'m19',text:'大手4社以外のコンビニを撮影',evidence:'外観',icon:'🏪'},
+  {id:'m20',text:'推し広告を撮影（ファン出資広告など）',evidence:'写真',icon:'📸'},
+  {id:'m21',text:'ローカル公園の看板を撮影（wiki未掲載）',evidence:'案内板写真',icon:'🌳'},
+  {id:'m22',text:'商店街のアーチを撮影',evidence:'写真',icon:'🏘️'},
+  {id:'m23',text:'チェーン店以外の銭湯の外観を撮影',evidence:'写真',icon:'♨️'},
+  {id:'m24',text:'区や市の公式ゆるキャラ像・パネルを撮影',evidence:'写真',icon:'🐾'},
+];
+
+function genCard(stations){
+  const sh=[...stations].sort(()=>Math.random()-.5).slice(0,24);
+  return [...Array(25)].map((_,i)=>i===12?{id:'FREE',name:'FREE',line:null,isFree:true}:sh[i-(i>12?1:0)]);
+}
+function genMissionCard(){
+  const sh=[...MISSIONS].sort(()=>Math.random()-.5).slice(0,24);
+  return [...Array(25)].map((_,i)=>i===12?{id:'FREE',name:'FREE',isFree:true}:sh[i-(i>12?1:0)]);
+}
+function checkBingo(card,reached){
+  if(!card||!reached)return[];
+  const lines=[];
+  const ok=i=>card[i]&&(card[i].isFree||reached.has(card[i].id));
+  for(let r=0;r<5;r++){const c=[0,1,2,3,4].map(x=>r*5+x);if(c.every(ok))lines.push(c)}
+  for(let c=0;c<5;c++){const r=[0,1,2,3,4].map(x=>x*5+c);if(r.every(ok))lines.push(r)}
+  if([0,6,12,18,24].every(ok))lines.push([0,6,12,18,24]);
+  if([4,8,12,16,20].every(ok))lines.push([4,8,12,16,20]);
+  return lines;
+}
+function genCode(){return Math.random().toString(36).substr(2,6).toUpperCase()}
+function nowTime(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
+function calcScore(team){
+  if(!team)return{masks:0,bingos:0,transfers:0,goalPenalty:0,masksScore:0,bingosScore:0,transferPenalty:0,total:0};
+  const stReached=new Set(team.stationReached||[]);
+  const msReached=new Set(team.missionReached||[]);
+  const stBingo=checkBingo(team.stationCard,stReached);
+  const msBingo=checkBingo(team.missionCard,msReached);
+  const masks=(team.stationReached||[]).filter(id=>id!=='FREE').length+(team.missionReached||[]).filter(id=>id!=='FREE').length;
+  const bingos=stBingo.length+msBingo.length;
+  const transfers=team.transferCount||0;
+  const goalPenalty=team.goalPenalty||0;
+  return{masks,bingos,transfers,goalPenalty,masksScore:masks,bingosScore:bingos*3,transferPenalty:transfers*-3,total:masks+bingos*3+transfers*-3+goalPenalty};
+}
+function getPhase(startedAt){
+  const e=(Date.now()-startedAt)/60000;
+  if(e<180)return'am';if(e<240)return'lunch';return'pm';
+}
+function initGameState(teamName,teamColor){
+  return{
+    gameCode:genCode(),
+    teams:[{id:'t1',name:teamName,color:teamColor,
+      stationCard:genCard(STATIONS),missionCard:genMissionCard(),
+      stationReached:['FREE'],missionReached:['FREE'],missionSubmissions:{},
+      transferCount:0,currentStation:null,goalPenalty:0,
+      logs:[{type:'st',title:'ゲーム開始！',sub:'大手町駅からスタート',time:nowTime()}]}],
+    events:[
+      {id:'e1',name:'ライブ会場キャパ対決',desc:'午前中に最大収容人数のライブ会場を発見！13:00に合流して発表',type:'time',status:'pending',scheduledTime:'13:00',reward:'駅名ビンゴ任意1マス',triggeredAt:null},
+      {id:'e2',name:'午後の部スタート',desc:'ダブルビンゴ本戦！18:00まで自由に移動',type:'time',status:'pending',scheduledTime:'14:00',reward:'',triggeredAt:null},
+    ],
+    startedAt:Date.now(),gameDuration:8*60*60*1000,
+    pendingApprovals:[],
+  };
+}
+
+// ── TOAST ──
+function Toast({toasts}){
+  return<div className="tcon">{toasts.map(t=>(
+    <div key={t.id} className={`toast ${t.type}`}>
+      <span style={{fontSize:19}}>{t.emoji}</span>
+      <div><div style={{fontWeight:700}}>{t.title}</div>
+        <div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{t.sub}</div></div>
+    </div>
+  ))}</div>;
+}
+
+// ── BINGO PAGE ──
+function BingoPage({team}){
+  const[view,setView]=useState('station');
+  const stR=useMemo(()=>new Set(team.stationReached||[]),[team.stationReached]);
+  const msR=useMemo(()=>new Set(team.missionReached||[]),[team.missionReached]);
+  const stB=useMemo(()=>checkBingo(team.stationCard,stR),[team.stationCard,stR]);
+  const msB=useMemo(()=>checkBingo(team.missionCard,msR),[team.missionCard,msR]);
+  const stBS=new Set(stB.flat());const msBS=new Set(msB.flat());
+  const score=calcScore(team);
+  return<div>
+    <div className="btabs">
+      <button className={`btab station ${view==='station'?'on':''}`} onClick={()=>setView('station')}>🚇 駅名 ({stB.length} BINGO)</button>
+      <button className={`btab mission ${view==='mission'?'on':''}`} onClick={()=>setView('mission')}>🎯 ミッション ({msB.length} BINGO)</button>
+    </div>
+    {view==='station'&&<>
+      <div className="bgrid">
+        {(team.stationCard||[]).map((cell,i)=>{
+          const hit=cell.isFree||stR.has(cell.id);
+          const bl=stBS.has(i)&&hit;
+          const ln=cell.line?METRO_LINES[cell.line]:null;
+          return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${bl?'bline':''}`}>
+            {ln&&<div className="bln" style={{color:ln.color}}>{ln.short}</div>}
+            <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
+          </div>;
+        })}
+      </div>
+      <div style={{marginTop:8,display:'flex',gap:6,flexWrap:'wrap'}}>
+        {Object.entries(METRO_LINES).map(([k,l])=>(
+          <div key={k} style={{display:'flex',alignItems:'center',gap:3,fontSize:9,color:'var(--muted)'}}>
+            <div style={{width:7,height:7,borderRadius:'50%',background:l.color}}></div>
+            {l.op==='toei'?'都営':''}{l.name}
+          </div>
+        ))}
+      </div>
+    </>}
+    {view==='mission'&&<>
+      <div className="bgrid">
+        {(team.missionCard||[]).map((cell,i)=>{
+          const hit=cell.isFree||msR.has(cell.id);
+          const pend=!hit&&(team.missionSubmissions||{})[cell.id]==='pending';
+          const bl=msBS.has(i)&&hit;
+          return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${pend?'pend':''} ${bl?'bline mb':''}`}>
+            {!cell.isFree&&<div className="bln">{cell.icon||'🎯'}</div>}
+            <div className="bnm" style={{fontSize:7}}>{cell.isFree?'FREE':(cell.text||'').slice(0,10)+'…'}</div>
+          </div>;
+        })}
+      </div>
+      <div style={{marginTop:8,fontSize:10,color:'var(--muted)',display:'flex',gap:10,flexWrap:'wrap'}}>
+        <span><span style={{color:'var(--green)'}}>■</span> 承認済み</span>
+        <span><span style={{color:'var(--orange)'}}>■</span> 審査中</span>
+      </div>
+    </>}
+    <div className="score-detail" style={{marginTop:12}}>
+      <div className="score-row"><span className="label">マス数（{score.masks}マス×1pt）</span><span className="val">{score.masksScore}pt</span></div>
+      <div className="score-row"><span className="label">ビンゴ（{score.bingos}列×3pt）</span><span className="val">{score.bingosScore}pt</span></div>
+      <div className="score-row"><span className="label">乗り換えペナルティ（{score.transfers}回）</span><span className="val neg">{score.transferPenalty}pt</span></div>
+      {score.goalPenalty!==0&&<div className="score-row"><span className="label">ゴールペナルティ</span><span className="val neg">{score.goalPenalty}pt</span></div>}
+      <div className="score-row"><span>合計</span><span className="val" style={{fontSize:20}}>{score.total}pt</span></div>
+    </div>
+  </div>;
+}
+
+// ── ARRIVAL PAGE ──
+function ArrivalPage({team,onArrive,onTransfer}){
+  const[selLine,setSelLine]=useState(null);
+  const[search,setSearch]=useState('');
+  const[sel,setSel]=useState(null);
+  const[photoPreview,setPhotoPreview]=useState(null);
+  const fileRef=useRef();
+  const reached=new Set(team.stationReached||[]);
+  const cardIds=new Set((team.stationCard||[]).map(c=>c.id));
+  const filtered=useMemo(()=>{let s=STATIONS;if(selLine)s=s.filter(x=>x.line===selLine);if(search)s=s.filter(x=>x.name.includes(search));return s;},[selLine,search]);
+  const lastId=(team.stationReached||[]).filter(id=>id!=='FREE').slice(-1)[0];
+  return<div>
+    <button className="transfer-btn" onClick={onTransfer}>🔄 乗り換え記録 <span style={{fontSize:11,opacity:.7}}>（-3pt）　現在 {team.transferCount||0}回</span></button>
+    {lastId&&<div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:10}}>
+      <div style={{fontSize:10,color:'var(--muted)',marginBottom:3}}>現在地（最終記録）</div>
+      <div style={{fontSize:20,fontWeight:700}}>{STATIONS.find(s=>s.id===lastId)?.name||lastId}</div>
+    </div>}
+    <p className="sec">路線を選ぶ</p>
+    <div className="lsel">
+      <button className="lbtn" style={{background:!selLine?'rgba(255,255,255,.15)':'var(--card2)',color:'#e8eaf0',borderColor:!selLine?'rgba(255,255,255,.4)':'var(--border)',opacity:!selLine?1:.6}} onClick={()=>setSelLine(null)}>全線</button>
+      {Object.entries(METRO_LINES).map(([k,l])=>(
+        <button key={k} className="lbtn" style={{background:l.color+(selLine===k?'cc':'33'),color:selLine===k?'#fff':l.color,borderColor:l.color,opacity:selLine&&selLine!==k?.5:1}} onClick={()=>setSelLine(selLine===k?null:k)}>{l.op==='toei'?'都営':''}{l.name}</button>
+      ))}
+    </div>
+    <input className="sinp" placeholder="駅名で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
+    <div className="slist">
+      {filtered.map(st=>{
+        const ln=METRO_LINES[st.line];if(!ln)return null;
+        const visited=reached.has(st.id);const onCard=cardIds.has(st.id);const isSel=sel?.id===st.id;
+        return<button key={st.id} className={`sbtn ${onCard?'oncard':''} ${visited?'done':''}`}
+          style={isSel?{borderColor:'var(--yellow)',background:'rgba(245,197,24,.1)'}:{}}
+          onClick={()=>setSel(isSel?null:st)}>
+          <div className="dot" style={{background:ln.color}}></div><span>{st.name}</span>
+          {onCard&&!visited&&<span style={{fontSize:8,color:'var(--cyan)',marginLeft:'auto'}}>★</span>}
+          {visited&&<span style={{fontSize:8,color:'var(--green)',marginLeft:'auto'}}>✓</span>}
+        </button>;
+      })}
+    </div>
+    {sel&&<>
+      <p className="sec" style={{marginTop:12}}>到着証拠写真（駅名看板を含めること）</p>
+      <div className={`photo-area ${photoPreview?'has':''}`} onClick={()=>fileRef.current.click()}>
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="photo-input" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhotoPreview(ev.target.result);r.readAsDataURL(f);}}/>
+        {photoPreview?<><img src={photoPreview} className="photo-preview" alt="証拠"/><div style={{fontSize:10,color:'var(--green)',marginTop:5}}>✓ 写真添付済み</div></>:<><div style={{fontSize:26,marginBottom:5}}>📷</div><div style={{fontSize:11,color:'var(--muted)'}}>駅名看板の写真を添付（推奨）</div></>}
+      </div>
+    </>}
+    <button className={`btn ${sel?'grn':'sec'}`} style={{marginTop:10}} onClick={()=>{if(!sel)return;onArrive(sel,photoPreview);setSel(null);setPhotoPreview(null);setSearch('');}} disabled={!sel}>
+      {sel?`📍 ${sel.name}に到着！`:'駅を選んでください'}
+    </button>
+  </div>;
+}
+
+// ── MISSION PAGE ──
+function MissionPage({team,onSubmitMission}){
+  const[selMission,setSelMission]=useState(null);
+  const[photoPreview,setPhotoPreview]=useState(null);
+  const[note,setNote]=useState('');
+  const fileRef=useRef();
+  const msReached=new Set(team.missionReached||[]);
+  const subs=team.missionSubmissions||{};
+  const cardMissions=(team.missionCard||[]).filter(c=>!c.isFree);
+  if(selMission)return<div>
+    <button onClick={()=>{setSelMission(null);setPhotoPreview(null);setNote('');}} style={{background:'none',border:'none',color:'var(--muted)',fontSize:13,cursor:'pointer',marginBottom:12,fontFamily:'Noto Sans JP,sans-serif'}}>← 一覧に戻る</button>
+    <div style={{background:'var(--card2)',borderRadius:10,padding:12,marginBottom:12}}>
+      <div style={{fontSize:20,marginBottom:6}}>{selMission.icon}</div>
+      <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>{selMission.text}</div>
+      <div style={{fontSize:11,color:'var(--muted)'}}>📋 証拠：{selMission.evidence}</div>
+    </div>
+    <p className="sec">証拠写真（必須）</p>
+    <div className={`photo-area ${photoPreview?'has':''}`} onClick={()=>fileRef.current.click()}>
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="photo-input" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhotoPreview(ev.target.result);r.readAsDataURL(f);}}/>
+      {photoPreview?<><img src={photoPreview} className="photo-preview" alt="証拠"/><div style={{fontSize:10,color:'var(--green)',marginTop:5}}>✓ 写真添付済み</div></>:<><div style={{fontSize:26,marginBottom:5}}>📷</div><div style={{fontSize:11,color:'var(--muted)'}}>証拠写真を撮影または選択</div></>}
+    </div>
+    <p className="sec" style={{marginTop:12}}>補足メモ（任意）</p>
+    <input className="sinp" placeholder="補足情報があれば..." value={note} onChange={e=>setNote(e.target.value)}/>
+    <button className={`btn ${photoPreview?'pri':'sec'}`} onClick={()=>{if(!photoPreview)return;onSubmitMission(selMission.id,photoPreview,note);setSelMission(null);setPhotoPreview(null);setNote('');}} disabled={!photoPreview}>
+      {photoPreview?'📤 運営に申請する':'写真を添付してください'}
+    </button>
+  </div>;
+  return<div>
+    <div style={{background:'rgba(143,118,214,.1)',border:'1px solid var(--purple)',borderRadius:10,padding:'10px 12px',marginBottom:12,fontSize:11}}>
+      <span style={{fontWeight:700,color:'var(--purple)'}}>🎯 ミッションビンゴ</span>　写真を撮って申請→運営が承認したらマスが開きます
+    </div>
+    {cardMissions.map((m,idx)=>{
+      const done=msReached.has(m.id);const pend=subs[m.id]==='pending';const rej=subs[m.id]==='rejected';
+      return<div key={m.id} className={`mission-item ${done?'done':''} ${pend?'pend':''}`} onClick={()=>!done&&!pend&&setSelMission(m)}>
+        <div className="mission-num">{idx+1}</div>
+        <div className="mission-body">
+          <div className="mission-title">{m.icon} {m.text}</div>
+          <div className="mission-evidence">📋 {m.evidence}</div>
+          {rej&&<div style={{fontSize:10,color:'var(--red)',marginTop:3}}>✗ 却下。再申請できます</div>}
+        </div>
+        <div className={`mission-status ${done?'ms-done':pend?'ms-pend':rej?'ms-rej':'ms-none'}`}>
+          {done?'承認済':pend?'審査中':rej?'却下':'未達成'}
+        </div>
+      </div>;
+    })}
+  </div>;
+}
+
+// ── SCORE PAGE ──
+function ScorePage({gameState,myTeamId}){
+  const teams=[...(gameState.teams||[])].map(t=>({...t,...calcScore(t)})).sort((a,b)=>b.total-a.total);
+  const rankCls=['g','s','b'];const myTeam=teams.find(t=>t.id===myTeamId);
+  return<div>
+    <div className="rank">
+      <div className="rh">RANKING — リアルタイム</div>
+      {teams.map((t,i)=>(
+        <div key={t.id} className={`rrow ${t.id===myTeamId?'me':''}`}>
+          <div className={`rn ${rankCls[i]||''}`}>{i+1}</div>
+          <div className="rt">
+            <div className="rtn"><div className="dot" style={{background:t.color,width:9,height:9}}></div>{t.name}{t.id===myTeamId?' 👈':''}</div>
+            <div className="rtd">{t.masks}マス ・ BINGO {t.bingos} ・ 乗換{t.transfers}回</div>
+          </div>
+          <div className="rs">{t.total}</div>
+        </div>
+      ))}
+    </div>
+    {myTeam&&<>
+      <p className="sec">得点内訳</p>
+      <div className="score-detail">
+        <div className="score-row"><span className="label">マス（{myTeam.masks}×1pt）</span><span className="val">{myTeam.masksScore}pt</span></div>
+        <div className="score-row"><span className="label">ビンゴ（{myTeam.bingos}列×3pt）</span><span className="val">{myTeam.bingosScore}pt</span></div>
+        <div className="score-row"><span className="label">乗換ペナ（{myTeam.transfers}回×-3pt）</span><span className="val neg">{myTeam.transferPenalty}pt</span></div>
+        {myTeam.goalPenalty!==0&&<div className="score-row"><span className="label">ゴールペナ</span><span className="val neg">{myTeam.goalPenalty}pt</span></div>}
+        <div className="score-row"><span>合計</span><span className="val" style={{fontSize:22}}>{myTeam.total}pt</span></div>
+      </div>
+      <p className="sec">プレイログ</p>
+      <div>{[...(myTeam.logs||[])].reverse().map((log,i)=>(
+        <div key={i} className="li">
+          <div className={`lic ${log.type}`}>{log.type==='s'?'📍':log.type==='bingo'?'🎯':log.type==='ms'?'🏅':log.type==='pen'?'🔄':log.type==='ev'?'⚡':'🚀'}</div>
+          <div className="lb"><div className="lt">{log.title}</div><div className="ls">{log.sub}</div>
+            {log.photo&&<img src={log.photo} style={{width:'100%',maxHeight:70,objectFit:'cover',borderRadius:5,marginTop:5}} alt=""/>}
+          </div>
+          <div className="ltm">{log.time}</div>
+        </div>
+      ))}</div>
+    </>}
+  </div>;
+}
+
+// ── GOAL PAGE ──
+function GoalPage({team}){
+  const lastId=(team.stationReached||[]).filter(id=>id!=='FREE').slice(-1)[0];
+  const lastStation=STATIONS.find(s=>s.id===lastId);
+  const isOk=lastStation&&TALL_STATIONS.has(lastStation.id);
+  const goalStations=STATIONS.filter(s=>TALL_STATIONS.has(s.id));
+  return<div>
+    <div style={{background:'rgba(245,197,24,.08)',border:'1px solid var(--yellow)',borderRadius:10,padding:'10px 12px',marginBottom:12,fontSize:11}}>
+      <div style={{fontWeight:700,color:'var(--yellow)',marginBottom:3}}>🏁 ゴール条件</div>
+      <div style={{color:'var(--muted)'}}>18:00時点の滞在駅に高さ100m以上の建物がなければ <span style={{color:'var(--red)',fontWeight:700}}>−5pt</span></div>
+    </div>
+    <div className={`goal-panel ${isOk?'goal-ok':'goal-ng'}`}>
+      <div style={{fontSize:13,fontWeight:700,display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+        {isOk?<><span>✅</span>現在地はセーフ！</>:<><span>❌</span>現在地はアウト！</>}
+      </div>
+      <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>現在地：{lastStation?.name||'未記録'}</div>
+      {!isOk&&<div style={{fontSize:11,color:'var(--red)'}}>このまま18:00を迎えると -5pt</div>}
+      {isOk&&<div style={{fontSize:11,color:'var(--green)'}}>高さ100m以上の建物がある駅です</div>}
+    </div>
+    <p className="sec">セーフな駅一覧</p>
+    <div className="goal-stations">{goalStations.map(st=><div key={st.id} className="goal-st-tag">{st.name}</div>)}</div>
+  </div>;
+}
+
+// ── RULES PAGE ──
+function RulesPage(){
+  return<div>
+    <div className="rc"><div className="rct"><span>🕐</span>タイムスケジュール</div>
+      <table className="stb"><tbody>
+        <tr><td>10:00〜13:00</td><td style={{color:'var(--cyan)'}}>午前：探索＆ライブ会場対決</td></tr>
+        <tr><td>13:00〜14:00</td><td style={{color:'var(--red)'}}>昼休憩・対決イベント発表</td></tr>
+        <tr><td>14:00〜18:00</td><td style={{color:'var(--yellow)'}}>午後：ダブルビンゴ本戦</td></tr>
+        <tr><td>18:00</td><td>終了・スコア集計</td></tr>
+      </tbody></table></div>
+    <div className="rc"><div className="rct"><span>💯</span>得点ルール</div>
+      <table className="stb"><tbody>
+        <tr><td>1マス埋め</td><td className="pos">+1pt</td></tr>
+        <tr><td>1列ビンゴ</td><td className="pos">+3pt</td></tr>
+        <tr><td>乗り換え1回</td><td className="neg">-3pt</td></tr>
+        <tr><td>ゴール条件未達成</td><td className="neg">-5pt</td></tr>
+      </tbody></table></div>
+    <div className="rc"><div className="rct"><span>🚇</span>移動ルール</div>
+      <div className="rcb">東京メトロ全線＋都営地下鉄が対象。徒歩・バスは自由。駅停車は写真証拠（駅名看板必須）で記録。同一駅の連続記録はNG。</div></div>
+    <div className="rc"><div className="rct"><span>⚔️</span>午前対決イベント</div>
+      <div className="rcb">10:00〜13:00に最大収容人数のライブ会場を発見。13:00に合流して発表。勝利チームに駅名ビンゴ任意1マスを付与。</div></div>
+    <div className="rc"><div className="rct"><span>🎯</span>ミッション判定</div>
+      <div className="rcb">写真を撮ってアプリから申請 → 運営が確認して承認。同一対象の重複カウント禁止。オンライン画像転用NG。</div></div>
+  </div>;
+}
+
+// ── ADMIN PAGE ──
+function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,gameCode}){
+  const[adminTab,setAdminTab]=useState('approval');
+  const[newEv,setNewEv]=useState({name:'',desc:'',type:'manual',scheduledTime:'',reward:''});
+  const pendingCount=(gameState.pendingApprovals||[]).length;
+  return<div>
+    <div style={{background:'rgba(230,0,18,.1)',border:'1px solid var(--red)',borderRadius:8,padding:'8px 12px',marginBottom:12,fontSize:11}}>
+      <span style={{fontWeight:700,color:'var(--red)'}}>🔒 運営モード</span>　コード：<span style={{fontFamily:'Bebas Neue',fontSize:15,color:'var(--yellow)',letterSpacing:2}}>{gameCode}</span>
+    </div>
+    <div className="admin-tabs">
+      <button className={`admin-tab ${adminTab==='approval'?'on':''}`} onClick={()=>setAdminTab('approval')}>
+        承認待ち {pendingCount>0&&<span className="badge badge-pend" style={{marginLeft:4}}>{pendingCount}</span>}
+      </button>
+      <button className={`admin-tab ${adminTab==='events'?'on':''}`} onClick={()=>setAdminTab('events')}>イベント</button>
+      <button className={`admin-tab ${adminTab==='scores'?'on':''}`} onClick={()=>setAdminTab('scores')}>スコア</button>
+    </div>
+    {adminTab==='approval'&&<>
+      {pendingCount===0?<div className="empty">承認待ちはありません</div>:
+        (gameState.pendingApprovals||[]).map((appr,i)=>{
+          const team=(gameState.teams||[]).find(t=>t.id===appr.teamId);
+          const mission=MISSIONS.find(m=>m.id===appr.missionId);
+          return<div key={i} className="approval-item">
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+              <div className="dot" style={{background:team?.color||'#888',width:10,height:10}}></div>
+              <div style={{fontWeight:700,fontSize:11}}>{team?.name||'不明'}</div>
+              <div style={{fontSize:10,color:'var(--muted)',marginLeft:'auto'}}>{appr.time}</div>
+            </div>
+            <div style={{fontSize:12,fontWeight:700,marginBottom:6}}>{mission?.icon} {mission?.text}</div>
+            {appr.photo&&<img src={appr.photo} style={{width:'100%',maxHeight:180,objectFit:'cover',borderRadius:8,marginBottom:6}} alt=""/>}
+            {appr.note&&<div style={{fontSize:11,color:'var(--muted)',marginBottom:6}}>メモ：{appr.note}</div>}
+            <div className="appr-btns">
+              <button className="appr-btn appr-ok" onClick={()=>onApprove(appr)}>✓ 承認</button>
+              <button className="appr-btn appr-ng" onClick={()=>onReject(appr)}>✗ 却下</button>
+            </div>
+          </div>;
+        })}
+    </>}
+    {adminTab==='events'&&<>
+      {(gameState.events||[]).map(ev=>(
+        <div key={ev.id} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:8,display:'flex',alignItems:'flex-start',gap:8}}>
+          <div style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:8,flexShrink:0,marginTop:2,
+            background:ev.status==='active'?'rgba(230,0,18,.15)':ev.status==='done'?'rgba(0,166,80,.15)':'rgba(245,197,24,.15)',
+            color:ev.status==='active'?'var(--red)':ev.status==='done'?'var(--green)':'var(--yellow)',
+            border:`1px solid ${ev.status==='active'?'rgba(230,0,18,.3)':ev.status==='done'?'rgba(0,166,80,.3)':'rgba(245,197,24,.3)'}`}}>
+            {ev.status==='pending'?'待機':ev.status==='active'?'発動中':'終了'}
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:700}}>{ev.name}</div>
+            <div style={{fontSize:10,color:'var(--muted)',marginTop:2}}>{ev.desc}</div>
+            {ev.reward&&<div style={{fontSize:10,color:'var(--orange)',marginTop:2}}>報酬：{ev.reward}</div>}
+          </div>
+          {ev.status==='pending'&&<button onClick={()=>onFireEvent(ev.id,'start')} style={{background:'var(--red)',color:'#fff',border:'none',borderRadius:6,padding:'5px 9px',fontSize:10,fontWeight:700,cursor:'pointer',fontFamily:'Noto Sans JP,sans-serif'}}>発動</button>}
+          {ev.status==='active'&&<button onClick={()=>onFireEvent(ev.id,'end')} style={{background:'var(--card)',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:6,padding:'5px 9px',fontSize:10,fontWeight:700,cursor:'pointer',fontFamily:'Noto Sans JP,sans-serif'}}>終了</button>}
+        </div>
+      ))}
+      <p className="sec">新しいイベントを追加</p>
+      <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:12}}>
+        <input className="sinp" placeholder="イベント名" value={newEv.name} onChange={e=>setNewEv({...newEv,name:e.target.value})}/>
+        <input className="sinp" placeholder="説明" value={newEv.desc} onChange={e=>setNewEv({...newEv,desc:e.target.value})}/>
+        <input className="sinp" placeholder="報酬" value={newEv.reward} onChange={e=>setNewEv({...newEv,reward:e.target.value})}/>
+        <div style={{display:'flex',gap:6,marginBottom:8}}>
+          <button className="lbtn" style={{background:newEv.type==='manual'?'rgba(255,255,255,.15)':'var(--card2)',color:'#e8eaf0',border:'1px solid var(--border)',flex:1,padding:'7px'}} onClick={()=>setNewEv({...newEv,type:'manual'})}>👆 手動</button>
+          <button className="lbtn" style={{background:newEv.type==='time'?'rgba(255,255,255,.15)':'var(--card2)',color:'#e8eaf0',border:'1px solid var(--border)',flex:1,padding:'7px'}} onClick={()=>setNewEv({...newEv,type:'time'})}>⏰ 時刻</button>
+        </div>
+        {newEv.type==='time'&&<input className="sinp" type="time" value={newEv.scheduledTime} onChange={e=>setNewEv({...newEv,scheduledTime:e.target.value})}/>}
+        <button className="btn red" style={{marginTop:6}} onClick={()=>{if(!newEv.name)return;onAddEvent({...newEv,id:'e'+Date.now(),status:'pending',triggeredAt:null});setNewEv({name:'',desc:'',type:'manual',scheduledTime:'',reward:''});}}>＋ 追加</button>
+      </div>
+    </>}
+    {adminTab==='scores'&&(gameState.teams||[]).map(t=>{
+      const sc=calcScore(t);
+      return<div key={t.id} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:8}}>
+        <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:6}}>
+          <div className="dot" style={{background:t.color,width:10,height:10}}></div>
+          <div style={{fontWeight:700,fontSize:14}}>{t.name}</div>
+          <div style={{marginLeft:'auto',fontFamily:'Bebas Neue',fontSize:22,color:'var(--gold)'}}>{sc.total}pt</div>
+        </div>
+        <div style={{fontSize:10,color:'var(--muted)',display:'flex',gap:10,flexWrap:'wrap'}}>
+          <span>マス {sc.masks}</span><span>BINGO {sc.bingos}</span><span>乗換 {sc.transfers}回</span>
+        </div>
+      </div>;
+    })}
+  </div>;
+}
+
+// ── SETUP MODAL ──
+function SetupModal({onCreate,onJoin}){
+  const[mode,setMode]=useState('select');
+  const[teamName,setTeamName]=useState('');
+  const[color,setColor]=useState(TEAM_COLORS[0]);
+  const[code,setCode]=useState('');
+  const[err,setErr]=useState('');
+  const[loading,setLoading]=useState(false);
+  return<div className="center-overlay">
+    <div className="modal">
+      {mode==='select'&&<>
+        <div className="modal-title">🚇 東京メトロラン</div>
+        <div style={{fontSize:11,color:'var(--muted)',textAlign:'center',marginBottom:16}}>第4回　ダブルビンゴ版</div>
+        <button className="btn pri" onClick={()=>setMode('create')}>新しいゲームを作る</button>
+        <button className="btn sec" onClick={()=>setMode('join')}>コードで参加する</button>
+        <button className="btn sec" style={{fontSize:11,color:'var(--muted)',marginTop:4}} onClick={()=>setMode('admin')}>🔒 運営として入る</button>
+      </>}
+      {mode==='create'&&<>
+        <div className="modal-title">新規ゲーム作成</div>
+        <input className="modal-input left" placeholder="チーム名を入力..." value={teamName} onChange={e=>setTeamName(e.target.value)}/>
+        <div style={{fontSize:11,color:'var(--muted)',marginBottom:8}}>チームカラー</div>
+        <div className="color-row">{TEAM_COLORS.map(c=><div key={c} className={`cswatch ${color===c?'sel':''}`} style={{background:c}} onClick={()=>setColor(c)}></div>)}</div>
+        {err&&<div style={{fontSize:11,color:'var(--red)',marginBottom:8}}>{err}</div>}
+        <button className="btn pri" disabled={loading} onClick={async()=>{if(!teamName.trim()){setErr('チーム名を入力してください');return}setLoading(true);await onCreate(teamName.trim(),color);setLoading(false);}}>
+          {loading?'作成中...':'ゲームを作成する'}
+        </button>
+        <button className="btn sec" onClick={()=>{setMode('select');setErr('')}}>戻る</button>
+      </>}
+      {mode==='join'&&<>
+        <div className="modal-title">ゲームに参加</div>
+        <div style={{fontSize:11,color:'var(--muted)',marginBottom:5}}>ゲームコード（6桁）</div>
+        <input className="modal-input" placeholder="XXXXXX" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} maxLength={6}/>
+        <input className="modal-input left" placeholder="チーム名を入力..." value={teamName} onChange={e=>setTeamName(e.target.value)} style={{marginBottom:8}}/>
+        <div style={{fontSize:11,color:'var(--muted)',marginBottom:8}}>チームカラー</div>
+        <div className="color-row">{TEAM_COLORS.map(c=><div key={c} className={`cswatch ${color===c?'sel':''}`} style={{background:c}} onClick={()=>setColor(c)}></div>)}</div>
+        {err&&<div style={{fontSize:11,color:'var(--red)',marginBottom:8}}>{err}</div>}
+        <button className="btn pri" disabled={loading} onClick={async()=>{
+          if(!code.trim()||!teamName.trim()){setErr('コードとチーム名を入力してください');return}
+          setLoading(true);const ok=await onJoin(code.trim().toUpperCase(),teamName.trim(),color);
+          setLoading(false);if(!ok)setErr('ゲームが見つかりません。コードを確認してください');
+        }}>{loading?'参加中...':'参加する'}</button>
+        <button className="btn sec" onClick={()=>{setMode('select');setErr('')}}>戻る</button>
+      </>}
+      {mode==='admin'&&<>
+        <div className="modal-title">🔒 運営モード</div>
+        <div style={{fontSize:11,color:'var(--muted)',marginBottom:8}}>管理するゲームのコードを入力</div>
+        <input className="modal-input" placeholder="XXXXXX" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} maxLength={6}/>
+        {err&&<div style={{fontSize:11,color:'var(--red)',marginBottom:8}}>{err}</div>}
+        <button className="btn red" disabled={loading} onClick={async()=>{
+          setLoading(true);const ok=await onJoin(code.trim().toUpperCase(),null,null,true);
+          setLoading(false);if(!ok)setErr('ゲームが見つかりません');
+        }}>{loading?'接続中...':'運営として入る'}</button>
+        <button className="btn sec" onClick={()=>{setMode('select');setErr('')}}>戻る</button>
+      </>}
+    </div>
+  </div>;
+}
+
+// ── SHARE MODAL ──
+function ShareModal({gameCode,onClose}){
+  const[copied,setCopied]=useState(false);
+  const copy=()=>{if(navigator.clipboard)navigator.clipboard.writeText(gameCode).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
+  return<div className="center-overlay" onClick={onClose}>
+    <div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">チームを招待する</div>
+      <div className="code-display"><div className="code-big">{gameCode}</div>
+        <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>このコードを仲間に共有してください</div></div>
+      <div style={{fontSize:11,color:'var(--muted)',textAlign:'center',marginBottom:10,lineHeight:1.7}}>
+        仲間は「コードで参加」からこのコードを入力<br/>
+        <span style={{color:'var(--yellow)'}}>別端末からリアルタイム同期されます 🔥</span>
+      </div>
+      <button className="btn pri" onClick={copy}>{copied?'✓ コピーしました！':'コードをコピー'}</button>
+      <button className="btn sec" onClick={onClose}>閉じる</button>
+    </div>
+  </div>;
+}
+
+// ── MAIN APP ──
+function App(){
+  const[gameState,setGameState]=useState(null);
+  const[myTeamId,setMyTeamId]=useState(null);
+  const[isAdmin,setIsAdmin]=useState(false);
+  const[tab,setTab]=useState('bingo');
+  const[toasts,setToasts]=useState([]);
+  const[showShare,setShowShare]=useState(false);
+  const[nowTs,setNowTs]=useState(Date.now());
+  const[fbReady,setFbReady]=useState(false);
+  const unsubRef=useRef(null);
+
+  useEffect(()=>{
+    initFirebase().then(()=>setFbReady(true));
+    const interval=setInterval(()=>setNowTs(Date.now()),1000);
+    return()=>clearInterval(interval);
+  },[]);
+
+  const showToast=useCallback((toast)=>{
+    const id=Date.now();
+    setToasts(prev=>[...prev,{...toast,id}]);
+    setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==id)),3500);
+  },[]);
+
+  const subscribeGame=useCallback((code)=>{
+    if(unsubRef.current)unsubRef.current();
+    unsubRef.current=fbSubscribe(code,(newState)=>{
+      setGameState(prev=>{
+        // イベント発動チェック
+        const t=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+        const hasNewActive=(newState.events||[]).find(e=>e.status==='active'&&!(prev?.events||[]).find(pe=>pe.id===e.id&&pe.status==='active'));
+        if(hasNewActive)showToast({type:'ev',emoji:'⚡',title:'イベント発動！',sub:hasNewActive.name});
+        return newState;
+      });
+    });
+  },[showToast]);
+
+  const handleCreate=useCallback(async(teamName,teamColor)=>{
+    const gs=initGameState(teamName,teamColor);
+    await fbSave(gs.gameCode,gs);
+    setGameState(gs);setMyTeamId('t1');setTab('bingo');
+    subscribeGame(gs.gameCode);
+    setTimeout(()=>setShowShare(true),300);
+  },[subscribeGame]);
+
+  const handleJoin=useCallback(async(code,teamName,teamColor,asAdmin=false)=>{
+    const gs=await fbLoad(code);
+    if(!gs)return false;
+    if(asAdmin){setGameState(gs);setIsAdmin(true);setTab('admin');subscribeGame(code);return true;}
+    const newId='t'+Date.now();
+    const newTeam={id:newId,name:teamName,color:teamColor,
+      stationCard:genCard(STATIONS),missionCard:genMissionCard(),
+      stationReached:['FREE'],missionReached:['FREE'],missionSubmissions:{},
+      transferCount:0,currentStation:null,goalPenalty:0,
+      logs:[{type:'st',title:'ゲーム参加！',sub:`チーム「${teamName}」で参加`,time:nowTime()}]};
+    const updated={...gs,teams:[...gs.teams,newTeam]};
+    await fbSave(code,updated);
+    setGameState(updated);setMyTeamId(newId);setTab('bingo');
+    subscribeGame(code);
+    return true;
+  },[subscribeGame]);
+
+  const saveAndUpdate=useCallback(async(newGs)=>{
+    await fbSave(newGs.gameCode,newGs);
+    setGameState(newGs);
+  },[]);
+
+  const handleArrive=useCallback(async(station,photoPreview)=>{
+    if(!myTeamId||!gameState)return;
+    const myTeam=gameState.teams.find(t=>t.id===myTeamId);
+    if(!myTeam||(myTeam.stationReached||[]).includes(station.id)){
+      showToast({type:'warn',emoji:'⚠️',title:'既に記録済みです',sub:station.name});return;
+    }
+    const newReached=[...(myTeam.stationReached||[]),station.id];
+    const reachedSet=new Set(newReached);
+    const isOnCard=(myTeam.stationCard||[]).some(c=>c.id===station.id);
+    const t=nowTime();
+    const log={type:'s',title:`${station.name}に到着`,sub:isOnCard?'ビンゴカードの駅！ +1pt':'+1pt',time:t,photo:photoPreview||null};
+    const prevBingo=checkBingo(myTeam.stationCard,new Set(myTeam.stationReached||[]));
+    const newBingo=checkBingo(myTeam.stationCard,reachedSet);
+    let newLogs=[...(myTeam.logs||[]),log];
+    showToast({type:'ok',emoji:'📍',title:`${station.name}に到着！`,sub:isOnCard?'+1pt（ビンゴカードの駅）':'+1pt'});
+    if(newBingo.length>prevBingo.length){
+      const diff=newBingo.length-prevBingo.length;
+      setTimeout(()=>showToast({type:'bingo',emoji:'🎯',title:`BINGO! ${diff}列達成！`,sub:`+${diff*3}pt`}),500);
+      newLogs=[...newLogs,{type:'bingo',title:`BINGO達成！ ${diff}列`,sub:`+${diff*3}pt`,time:t}];
+    }
+    const updated=gameState.teams.map(t2=>t2.id===myTeamId?{...t2,stationReached:newReached,logs:newLogs,currentStation:station.id}:t2);
+    await saveAndUpdate({...gameState,teams:updated});
+    setTab('bingo');
+  },[myTeamId,gameState,showToast,saveAndUpdate]);
+
+  const handleTransfer=useCallback(async()=>{
+    if(!myTeamId||!gameState)return;
+    const updated=gameState.teams.map(t=>{
+      if(t.id!==myTeamId)return t;
+      const tc=(t.transferCount||0)+1;
+      return{...t,transferCount:tc,logs:[...(t.logs||[]),{type:'pen',title:'乗り換え記録',sub:`-3pt（累計${tc}回・計${tc*-3}pt）`,time:nowTime()}]};
+    });
+    await saveAndUpdate({...gameState,teams:updated});
+    showToast({type:'warn',emoji:'🔄',title:'乗り換え記録',sub:'-3pt'});
+  },[myTeamId,gameState,showToast,saveAndUpdate]);
+
+  const handleMissionSubmit=useCallback(async(missionId,photo,note)=>{
+    if(!myTeamId||!gameState)return;
+    const appr={id:'a'+Date.now(),teamId:myTeamId,missionId,photo,note,time:nowTime()};
+    const updatedTeams=gameState.teams.map(t=>{
+      if(t.id!==myTeamId)return t;
+      const subs={...(t.missionSubmissions||{}),[missionId]:'pending'};
+      return{...t,missionSubmissions:subs};
+    });
+    await saveAndUpdate({...gameState,teams:updatedTeams,pendingApprovals:[...(gameState.pendingApprovals||[]),appr]});
+    showToast({type:'ms',emoji:'📤',title:'申請しました！',sub:'運営の承認をお待ちください'});
+  },[myTeamId,gameState,showToast,saveAndUpdate]);
+
+  const handleApprove=useCallback(async(appr)=>{
+    const updatedTeams=gameState.teams.map(t=>{
+      if(t.id!==appr.teamId)return t;
+      const subs={...(t.missionSubmissions||{}),[appr.missionId]:'approved'};
+      const newReached=[...(t.missionReached||[]),appr.missionId];
+      const prevBingo=checkBingo(t.missionCard,new Set(t.missionReached||[]));
+      const newBingo=checkBingo(t.missionCard,new Set(newReached));
+      let newLogs=[...(t.logs||[]),{type:'ms',title:'ミッション承認！',sub:MISSIONS.find(m=>m.id===appr.missionId)?.text||'',time:nowTime()}];
+      if(newBingo.length>prevBingo.length){
+        const diff=newBingo.length-prevBingo.length;
+        newLogs=[...newLogs,{type:'bingo',title:`ミッションBINGO！ ${diff}列`,sub:`+${diff*3}pt`,time:nowTime()}];
+      }
+      return{...t,missionSubmissions:subs,missionReached:newReached,logs:newLogs};
+    });
+    const newPending=(gameState.pendingApprovals||[]).filter(a=>a.id!==appr.id);
+    await saveAndUpdate({...gameState,teams:updatedTeams,pendingApprovals:newPending});
+    showToast({type:'ok',emoji:'✅',title:'承認しました',sub:''});
+  },[gameState,showToast,saveAndUpdate]);
+
+  const handleReject=useCallback(async(appr)=>{
+    const updatedTeams=gameState.teams.map(t=>{
+      if(t.id!==appr.teamId)return t;
+      return{...t,missionSubmissions:{...(t.missionSubmissions||{}),[appr.missionId]:'rejected'}};
+    });
+    const newPending=(gameState.pendingApprovals||[]).filter(a=>a.id!==appr.id);
+    await saveAndUpdate({...gameState,teams:updatedTeams,pendingApprovals:newPending});
+    showToast({type:'warn',emoji:'✗',title:'却下しました',sub:''});
+  },[gameState,showToast,saveAndUpdate]);
+
+  const handleFireEvent=useCallback(async(evId,action='start')=>{
+    const events=(gameState.events||[]).map(ev=>{
+      if(ev.id!==evId)return ev;
+      return action==='end'?{...ev,status:'done'}:{...ev,status:'active',triggeredAt:Date.now()};
+    });
+    if(action==='start'){
+      const ev=(gameState.events||[]).find(e=>e.id===evId);
+      if(ev)showToast({type:'ev',emoji:'⚡',title:'イベント発動！',sub:ev.name});
+    }
+    await saveAndUpdate({...gameState,events});
+  },[gameState,showToast,saveAndUpdate]);
+
+  const handleAddEvent=useCallback(async(ev)=>{
+    await saveAndUpdate({...gameState,events:[...(gameState.events||[]),ev]});
+  },[gameState,saveAndUpdate]);
+
+  // Timer
+  const remaining=gameState?Math.max(0,gameState.gameDuration-(nowTs-gameState.startedAt)):0;
+  const rH=Math.floor(remaining/3600000);
+  const rM=Math.floor((remaining%3600000)/60000);
+  const rS=Math.floor((remaining%60000)/1000);
+  const timerStr=`${rH}:${String(rM).padStart(2,'0')}:${String(rS).padStart(2,'0')}`;
+  const isEnding=remaining<30*60*1000;
+  const myTeam=gameState?.teams.find(t=>t.id===myTeamId);
+  const score=myTeam?calcScore(myTeam):{total:0,masks:0,bingos:0,transfers:0};
+  const activeEvents=(gameState?.events||[]).filter(e=>e.status==='active');
+  const pendingCount=(gameState?.pendingApprovals||[]).length;
+  const phase=gameState?getPhase(gameState.startedAt):'am';
+  const phaseLabel=phase==='am'?'午前フェーズ':phase==='lunch'?'昼休憩・対決':'午後フェーズ';
+  const phaseCls=phase==='am'?'phase-am':phase==='lunch'?'phase-lunch':'phase-pm';
+  const playerTabs=[
+    {id:'bingo',icon:'🎰',label:'ビンゴ'},
+    {id:'arrival',icon:'📍',label:'到着'},
+    {id:'mission',icon:'🎯',label:'ミッション'},
+    {id:'goal',icon:'🏁',label:'ゴール'},
+    {id:'score',icon:'🏆',label:'スコア'},
+    {id:'rules',icon:'📖',label:'ルール'},
+  ];
+
+  if(!fbReady){
+    return<div className="loading">
+      <div className="spinner"></div>
+      <div style={{fontSize:13,color:'var(--muted)'}}>Firebase接続中...</div>
+    </div>;
+  }
+
+  if(!gameState||(!myTeamId&&!isAdmin)){
+    return<><Toast toasts={toasts}/><SetupModal onCreate={handleCreate} onJoin={handleJoin}/></>;
+  }
+
+  return<div className="wrap">
+    <Toast toasts={toasts}/>
+    {showShare&&<ShareModal gameCode={gameState.gameCode} onClose={()=>setShowShare(false)}/>}
+    <div className="hdr">
+      <div style={{display:'flex',flexDirection:'column',gap:3}}>
+        <div className="logo">METRO RUN</div>
+        <span className={`phase-badge ${phaseCls}`}>{phaseLabel}</span>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        {myTeam&&<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:20,padding:'4px 10px',fontSize:10,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowShare(true)}>
+          <div className="dot" style={{background:myTeam.color}}></div>
+          <span>{myTeam.name}</span><span style={{fontSize:9,color:'var(--muted)'}}>📤</span>
+        </div>}
+        {!isAdmin&&<div>
+          <div style={{fontSize:9,color:'var(--muted)',textAlign:'right'}}>残り</div>
+          <div className={`timer ${isEnding?'end':''}`}>{timerStr}</div>
+        </div>}
+        {isAdmin&&<div style={{fontSize:11,color:'var(--red)',fontWeight:700,display:'flex',alignItems:'center',gap:5}}>
+          ADMIN {pendingCount>0&&<span className="badge badge-pend">{pendingCount}</span>}
+        </div>}
+      </div>
+    </div>
+    {!isAdmin&&<div className="sbar">
+      <div className="si"><div className="sl">SCORE</div><div className="sv">{score.total}</div></div>
+      <div className="si"><div className="sl">BINGO</div><div className="sv b">{score.bingos}</div></div>
+      <div className="si"><div className="sl">マス</div><div className="sv g">{score.masks}</div></div>
+      <div className="si"><div className="sl">乗換</div><div className="sv r">{score.transfers}</div></div>
+    </div>}
+    {!isAdmin&&activeEvents.map(ev=>(
+      <div key={ev.id} className="evbanner active">
+        <span style={{fontSize:20}}>🚨</span>
+        <div><div style={{fontSize:11,color:'var(--red)',fontWeight:700}}>イベント発動中！</div>
+          <div style={{fontSize:12,fontWeight:700}}>{ev.name}</div>
+          <div style={{fontSize:10,color:'var(--muted)'}}>{ev.desc}</div>
+          {ev.reward&&<div style={{fontSize:10,color:'var(--orange)',marginTop:1}}>報酬：{ev.reward}</div>}
+        </div>
+      </div>
+    ))}
+    <div className="nav">
+      {(isAdmin?[{id:'admin',icon:'🔒',label:'運営'}]:playerTabs).map(t=>(
+        <button key={t.id} className={`nt ${tab===t.id?'on':''}`} onClick={()=>setTab(t.id)}>
+          <span className="ni">{t.icon}</span>{t.label}
+          {t.id==='admin'&&pendingCount>0&&<span className="badge badge-pend" style={{marginTop:1}}>{pendingCount}</span>}
+        </button>
+      ))}
+    </div>
+    <div className="cnt">
+      {tab==='bingo'&&myTeam&&<BingoPage team={myTeam}/>}
+      {tab==='arrival'&&myTeam&&<ArrivalPage team={myTeam} onArrive={handleArrive} onTransfer={handleTransfer}/>}
+      {tab==='mission'&&myTeam&&<MissionPage team={myTeam} onSubmitMission={handleMissionSubmit}/>}
+      {tab==='goal'&&myTeam&&<GoalPage team={myTeam}/>}
+      {tab==='score'&&<ScorePage gameState={gameState} myTeamId={myTeamId}/>}
+      {tab==='rules'&&<RulesPage/>}
+      {tab==='admin'&&<AdminPage gameState={gameState} onFireEvent={handleFireEvent} onAddEvent={handleAddEvent} onApprove={handleApprove} onReject={handleReject} gameCode={gameState.gameCode}/>}
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
