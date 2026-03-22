@@ -7,6 +7,9 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<!-- Firebase SDKs (UMD版) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Bebas+Neue&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -216,50 +219,30 @@ const FIREBASE_CONFIG = {
   appId: "1:812833586042:web:42e1fc7ed04bfd5d8634c3"
 };
 
-// ── FIREBASE REALTIME DB HELPERS ──
-let firebaseApp = null;
-let db = null;
+// ── FIREBASE INIT (compat SDK) ──
+firebase.initializeApp(FIREBASE_CONFIG);
+const _db = firebase.database();
 
-async function initFirebase() {
-  if (db) return db;
-  const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-  const { getDatabase, ref, set, get, onValue, update } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
-  firebaseApp = initializeApp(FIREBASE_CONFIG);
-  db = getDatabase(firebaseApp);
-  window._fbRef = ref;
-  window._fbSet = set;
-  window._fbGet = get;
-  window._fbOnValue = onValue;
-  window._fbUpdate = update;
-  return db;
-}
+function initFirebase() { return Promise.resolve(_db); }
 
 async function fbSave(code, state) {
-  await initFirebase();
-  // 写真データはFirebaseに直接保存するには大きすぎるのでbase64をlocalStorageへ退避
   const stateToSave = stripPhotos(state);
-  await window._fbSet(window._fbRef(db, `games/${code}`), stateToSave);
-  // 写真はlocalStorageに保存
+  await _db.ref(`games/${code}`).set(stateToSave);
   savePhotosLocally(code, state);
 }
 
 async function fbLoad(code) {
-  await initFirebase();
-  const snap = await window._fbGet(window._fbRef(db, `games/${code}`));
+  const snap = await _db.ref(`games/${code}`).get();
   if (!snap.exists()) return null;
-  const state = snap.val();
-  return mergePhotosFromLocal(code, state);
+  return mergePhotosFromLocal(code, snap.val());
 }
 
 function fbSubscribe(code, callback) {
-  if (!db) return () => {};
-  const unsubscribe = window._fbOnValue(window._fbRef(db, `games/${code}`), (snap) => {
-    if (snap.exists()) {
-      const state = snap.val();
-      callback(mergePhotosFromLocal(code, state));
-    }
+  const ref = _db.ref(`games/${code}`);
+  ref.on('value', (snap) => {
+    if (snap.exists()) callback(mergePhotosFromLocal(code, snap.val()));
   });
-  return unsubscribe;
+  return () => ref.off('value');
 }
 
 // 写真(base64)はlocalStorageに保存（Firebaseの1MB制限対策）
@@ -881,7 +864,7 @@ function App(){
   const unsubRef=useRef(null);
 
   useEffect(()=>{
-    initFirebase().then(()=>setFbReady(true));
+    setFbReady(true);
     const interval=setInterval(()=>setNowTs(Date.now()),1000);
     return()=>clearInterval(interval);
   },[]);
