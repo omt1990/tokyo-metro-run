@@ -7,7 +7,6 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<!-- Firebase SDKs (UMD版) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
@@ -17,7 +16,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-
 :root{
   --red:#e60012;--orange:#f68b1e;--yellow:#f5c518;--green:#00a650;
   --cyan:#00b2d6;--purple:#8f76d6;--bg:#0a0e1a;--card:#141824;
-  --card2:#1a1f2e;--border:rgba(255,255,255,0.1);--muted:#8892a4;--gold:#f5c518
+  --card2:#1a1f2e;--border:rgba(255,255,255,0.1);--muted:#8892a4;--gold:#f5c518;
+  --diff1:#00b2d6;--diff2:#f5c518;--diff3:#e60012
 }
 .wrap{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
 .hdr{background:#141824;border-bottom:1px solid var(--border);padding:10px 14px;
@@ -45,6 +45,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-
 .ni{font-size:16px}
 .cnt{flex:1;padding:14px;overflow-y:auto}
 .sec{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:14px}
+/* BINGO */
 .btabs{display:flex;gap:6px;margin-bottom:12px}
 .btab{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);
   font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;
@@ -58,11 +59,14 @@ body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-
 .bcell.hit{background:#1a3a1a;border:1px solid var(--green)}
 .bcell.hit::after{content:'✓';position:absolute;top:1px;right:2px;font-size:7px;color:var(--green)}
 .bcell.pend{background:#2a1a00;border:1px solid var(--orange)}
-.bcell.pend::after{content:'⏳';position:absolute;top:1px;right:2px;font-size:7px}
 .bcell.free{background:#1a1a00;border:1px solid var(--yellow)}
 .bcell.bline{background:#0d1f2d;border:1px solid var(--cyan)}
 .bcell.bline.mb{background:#1a0d2d;border:1px solid var(--purple)}
-.bln{font-size:7px;color:var(--muted);line-height:1;text-align:center}
+/* 難易度マーカー */
+.diff-badge{position:absolute;top:1px;left:2px;font-size:6px;font-weight:700;line-height:1}
+.diff1{color:var(--diff1)}.diff2{color:var(--diff2)}.diff3{color:var(--diff3)}
+.fixed-badge{position:absolute;bottom:1px;left:2px;font-size:5px;color:var(--orange)}
+.bln{font-size:7px;color:var(--muted);line-height:1;text-align:center;margin-top:6px}
 .bcell.hit .bln{color:var(--green)}
 .bnm{font-size:8px;font-weight:700;color:#e8eaf0;line-height:1.2;text-align:center;word-break:break-all}
 .bcell.hit .bnm{color:#7fdd7f}
@@ -70,18 +74,46 @@ body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-
 .bcell.bline .bnm{color:var(--cyan)}
 .bcell.bline.mb .bnm{color:var(--purple)}
 .bcell.pend .bnm{color:var(--orange)}
+/* SCORE */
 .score-detail{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px}
 .score-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
 .score-row:last-child{border-bottom:none;font-weight:700;color:#e8eaf0;margin-top:4px;padding-top:8px}
 .score-row .label{color:var(--muted)}
 .score-row .val{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--gold)}
 .score-row .val.neg{color:var(--red)}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;
-  display:flex;align-items:flex-end;justify-content:center}
-.bottom-sheet{background:var(--card);border-radius:16px 16px 0 0;padding:20px 18px 32px;
-  width:100%;max-width:430px;max-height:90vh;overflow-y:auto}
-.mission-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;
-  padding:12px;margin-bottom:8px;cursor:pointer;transition:all .15s;display:flex;align-items:flex-start;gap:10px}
+/* MULTIPLY DISPLAY */
+.multiply-display{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;text-align:center}
+.multiply-formula{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);letter-spacing:2px}
+.multiply-label{font-size:10px;color:var(--muted);margin-top:4px}
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:flex;align-items:flex-end;justify-content:center}
+.bottom-sheet{background:var(--card);border-radius:16px 16px 0 0;padding:20px 18px 32px;width:100%;max-width:430px;max-height:90vh;overflow-y:auto}
+.center-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:360px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:14px;text-align:center}
+.modal-input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;
+  padding:11px;color:#e8eaf0;font-size:15px;font-family:'Noto Sans JP',sans-serif;
+  outline:none;text-align:center;letter-spacing:4px;margin-bottom:8px}
+.modal-input.left{text-align:left;letter-spacing:normal;font-size:13px}
+.color-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.cswatch{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15px}
+.cswatch.sel{border-color:#fff;transform:scale(1.15)}
+.code-display{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px}
+.code-big{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:8px;color:var(--yellow);line-height:1}
+/* MODE SELECT */
+.mode-cards{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.mode-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all .15s}
+.mode-card.sel.basic{border-color:var(--cyan);background:rgba(0,178,214,.08)}
+.mode-card.sel.double{border-color:var(--purple);background:rgba(143,118,214,.08)}
+.mode-card-title{font-size:13px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:7px}
+.mode-card-desc{font-size:11px;color:var(--muted);line-height:1.6}
+.route-cards{display:flex;gap:6px;margin-bottom:12px}
+.route-card{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 8px;cursor:pointer;text-align:center;transition:all .15s}
+.route-card.sel{border-color:var(--yellow);background:rgba(245,197,24,.08)}
+.route-card-title{font-size:12px;font-weight:700;margin-bottom:3px}
+.route-card-desc{font-size:9px;color:var(--muted)}
+/* MISSION */
+.mission-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;display:flex;align-items:flex-start;gap:10px}
 .mission-item.done{border-color:var(--green);background:rgba(0,166,80,.06)}
 .mission-item.pend{border-color:var(--orange);background:rgba(246,139,30,.06)}
 .mission-num{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--muted);flex-shrink:0;width:24px;line-height:1}
@@ -95,36 +127,31 @@ body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-
 .ms-pend{background:rgba(246,139,30,.15);color:var(--orange)}
 .ms-done{background:rgba(0,166,80,.15);color:var(--green)}
 .ms-rej{background:rgba(230,0,18,.15);color:var(--red)}
-.photo-area{border:1.5px dashed var(--border);border-radius:10px;padding:14px;
-  text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+/* PHOTO */
+.photo-area{border:1.5px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;position:relative;overflow:hidden}
 .photo-area.has{border-color:var(--green);border-style:solid}
 .photo-preview{width:100%;max-height:160px;object-fit:cover;border-radius:8px;display:block}
 .photo-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.btn{padding:12px;border-radius:10px;border:none;font-size:14px;font-weight:700;
-  font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .2s;width:100%;margin-top:8px}
+/* BTN */
+.btn{padding:12px;border-radius:10px;border:none;font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .2s;width:100%;margin-top:8px}
 .btn.pri{background:linear-gradient(135deg,var(--yellow),#c9a200);color:#000}
 .btn.grn{background:linear-gradient(135deg,var(--green),#005c2e);color:#fff}
 .btn.sec{background:var(--card2);color:var(--muted);border:1px solid var(--border)}
 .btn.red{background:linear-gradient(135deg,var(--red),#8b0000);color:#fff}
 .btn:active{transform:scale(.98)}
-.transfer-btn{width:100%;padding:13px;border-radius:10px;border:2px dashed var(--orange);
-  background:rgba(246,139,30,.06);color:var(--orange);font-size:14px;font-weight:700;
-  font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-bottom:8px}
+/* ARRIVAL */
 .lsel{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
-.lbtn{padding:4px 9px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;
-  border:1px solid transparent;transition:all .15s;font-family:'Noto Sans JP',sans-serif}
-.sinp{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;
-  padding:9px 12px;color:#e8eaf0;font-size:13px;font-family:'Noto Sans JP',sans-serif;
-  margin-bottom:8px;outline:none}
+.lbtn{padding:4px 9px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:all .15s;font-family:'Noto Sans JP',sans-serif}
+.sinp{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:#e8eaf0;font-size:13px;font-family:'Noto Sans JP',sans-serif;margin-bottom:8px;outline:none}
 .sinp:focus{border-color:rgba(255,255,255,.3)}
 .sinp::placeholder{color:var(--muted)}
 .slist{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;max-height:200px;overflow-y:auto}
-.sbtn{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 9px;
-  text-align:left;cursor:pointer;display:flex;align-items:center;gap:6px;
-  color:#e8eaf0;font-size:11px;font-family:'Noto Sans JP',sans-serif}
+.sbtn{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 9px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:6px;color:#e8eaf0;font-size:11px;font-family:'Noto Sans JP',sans-serif;position:relative}
 .sbtn.oncard{border-color:rgba(0,178,214,.5);background:rgba(0,178,214,.06)}
 .sbtn.done{opacity:.4}
+.sbtn-diff{font-size:8px;font-weight:700;margin-left:auto;flex-shrink:0}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+/* RANKING */
 .rank{background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px}
 .rh{padding:8px 14px;background:var(--card2);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)}
 .rrow{display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);gap:10px}
@@ -135,47 +162,18 @@ body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-
 .rt{flex:1}.rtn{font-weight:700;font-size:13px;display:flex;align-items:center;gap:5px}
 .rtd{font-size:10px;color:var(--muted);margin-top:2px}
 .rs{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--gold)}
+/* LOG */
 .li{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start}
 .li:last-child{border-bottom:none}
-.lic{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:13px;flex-shrink:0;background:var(--card2);border:1px solid var(--border)}
-.lic.s{border-color:var(--green)}.lic.bingo{border-color:var(--cyan)}
-.lic.st{border-color:var(--yellow)}.lic.ev{border-color:var(--red)}
-.lic.ms{border-color:var(--purple)}.lic.pen{border-color:var(--orange)}
+.lic{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:var(--card2);border:1px solid var(--border)}
+.lic.s{border-color:var(--green)}.lic.bingo{border-color:var(--cyan)}.lic.st{border-color:var(--yellow)}.lic.ev{border-color:var(--red)}.lic.ms{border-color:var(--purple)}
 .lb{flex:1}.lt{font-size:12px;font-weight:700}.ls{font-size:10px;color:var(--muted);margin-top:1px}
 .ltm{font-family:'Bebas Neue',sans-serif;font-size:13px;color:var(--muted);flex-shrink:0}
-.evbanner{border-radius:10px;padding:10px 12px;margin:6px 14px;
-  display:flex;align-items:center;gap:10px;animation:slideIn .4s ease-out}
+/* EVENT */
+.evbanner{border-radius:10px;padding:10px 12px;margin:6px 14px;display:flex;align-items:center;gap:10px;animation:slideIn .4s ease-out}
 .evbanner.active{background:rgba(230,0,18,.12);border:1px solid var(--red)}
 @keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-.goal-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
-.goal-ok{border-color:var(--green);background:rgba(0,166,80,.06)}
-.goal-ng{border-color:var(--red);background:rgba(230,0,18,.06)}
-.goal-stations{display:flex;flex-wrap:wrap;gap:5px}
-.goal-st-tag{font-size:10px;padding:3px 8px;border-radius:12px;background:rgba(0,166,80,.15);color:var(--green);border:1px solid rgba(0,166,80,.3)}
-.admin-tabs{display:flex;gap:6px;margin-bottom:12px}
-.admin-tab{flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:var(--card2);
-  font-size:11px;font-weight:700;cursor:pointer;text-align:center;font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
-.admin-tab.on{border-color:var(--red);color:var(--red);background:rgba(230,0,18,.08)}
-.approval-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px}
-.appr-btns{display:flex;gap:6px;margin-top:8px}
-.appr-btn{flex:1;padding:8px;border-radius:8px;border:none;font-size:12px;font-weight:700;
-  font-family:'Noto Sans JP',sans-serif;cursor:pointer}
-.appr-ok{background:rgba(0,166,80,.2);color:var(--green);border:1px solid rgba(0,166,80,.4)}
-.appr-ng{background:rgba(230,0,18,.15);color:var(--red);border:1px solid rgba(230,0,18,.3)}
-.center-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:600;
-  display:flex;align-items:center;justify-content:center;padding:20px}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:360px;max-height:90vh;overflow-y:auto}
-.modal-title{font-size:17px;font-weight:700;margin-bottom:14px;text-align:center}
-.modal-input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;
-  padding:11px;color:#e8eaf0;font-size:15px;font-family:'Noto Sans JP',sans-serif;
-  outline:none;text-align:center;letter-spacing:4px;margin-bottom:8px}
-.modal-input.left{text-align:left;letter-spacing:normal;font-size:13px}
-.color-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
-.cswatch{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
-.cswatch.sel{border-color:#fff;transform:scale(1.15)}
-.code-display{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px}
-.code-big{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:8px;color:var(--yellow);line-height:1}
+/* RULES */
 .rc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px}
 .rct{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:7px}
 .rcb{font-size:11px;color:var(--muted);line-height:1.9}
@@ -185,20 +183,26 @@ body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-
 .stb td{padding:5px 4px;color:var(--muted)}
 .stb td:last-child{text-align:right;font-weight:700;font-family:'Bebas Neue',sans-serif;font-size:14px}
 .stb .pos{color:var(--yellow)}.stb .neg{color:var(--red)}
-.tcon{position:fixed;top:65px;left:50%;transform:translateX(-50%);z-index:9999;
-  display:flex;flex-direction:column;gap:7px;width:360px;max-width:92vw;pointer-events:none}
-.toast{background:var(--card);border-radius:10px;padding:10px 14px;border:1px solid;
-  animation:tin .3s ease-out;font-size:12px;display:flex;align-items:center;gap:9px}
-.toast.ok{border-color:var(--green)}.toast.bingo{border-color:var(--cyan)}
-.toast.warn{border-color:var(--orange)}.toast.ev{border-color:var(--red)}
-.toast.ms{border-color:var(--purple)}
+/* ADMIN */
+.admin-tabs{display:flex;gap:6px;margin-bottom:12px}
+.admin-tab{flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:var(--card2);font-size:11px;font-weight:700;cursor:pointer;text-align:center;font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
+.admin-tab.on{border-color:var(--red);color:var(--red);background:rgba(230,0,18,.08)}
+.approval-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px}
+.appr-btns{display:flex;gap:6px;margin-top:8px}
+.appr-btn{flex:1;padding:8px;border-radius:8px;border:none;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer}
+.appr-ok{background:rgba(0,166,80,.2);color:var(--green);border:1px solid rgba(0,166,80,.4)}
+.appr-ng{background:rgba(230,0,18,.15);color:var(--red);border:1px solid rgba(230,0,18,.3)}
+/* TOAST */
+.tcon{position:fixed;top:65px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:7px;width:360px;max-width:92vw;pointer-events:none}
+.toast{background:var(--card);border-radius:10px;padding:10px 14px;border:1px solid;animation:tin .3s ease-out;font-size:12px;display:flex;align-items:center;gap:9px}
+.toast.ok{border-color:var(--green)}.toast.bingo{border-color:var(--cyan)}.toast.warn{border-color:var(--orange)}.toast.ev{border-color:var(--red)}.toast.ms{border-color:var(--purple)}
 @keyframes tin{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
-.empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:12px}
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700}
 .badge-pend{background:rgba(246,139,30,.15);color:var(--orange);border:1px solid rgba(246,139,30,.3)}
 .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px}
 .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--yellow);border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:12px}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 </style>
@@ -208,96 +212,60 @@ body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-
 <script type="text/babel">
 const {useState,useEffect,useCallback,useMemo,useRef} = React;
 
-// ── FIREBASE CONFIG ──
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDTMKfcvsKPOvMrHcQmewhWe55ejATpQNY",
-  authDomain: "tokyo-metro-run.firebaseapp.com",
-  databaseURL: "https://tokyo-metro-run-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "tokyo-metro-run",
-  storageBucket: "tokyo-metro-run.firebasestorage.app",
-  messagingSenderId: "812833586042",
-  appId: "1:812833586042:web:42e1fc7ed04bfd5d8634c3"
-};
-
-// ── FIREBASE INIT (compat SDK) ──
-firebase.initializeApp(FIREBASE_CONFIG);
-const _db = firebase.database();
-
-function initFirebase() { return Promise.resolve(_db); }
-
-async function fbSave(code, state) {
-  const stateToSave = stripPhotos(state);
-  await _db.ref(`games/${code}`).set(stateToSave);
-  savePhotosLocally(code, state);
+// ── FIREBASE ──
+firebase.initializeApp({
+  apiKey:"AIzaSyDTMKfcvsKPOvMrHcQmewhWe55ejATpQNY",
+  authDomain:"tokyo-metro-run.firebaseapp.com",
+  databaseURL:"https://tokyo-metro-run-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"tokyo-metro-run",
+  storageBucket:"tokyo-metro-run.firebasestorage.app",
+  messagingSenderId:"812833586042",
+  appId:"1:812833586042:web:42e1fc7ed04bfd5d8634c3"
+});
+const _db=firebase.database();
+async function fbSave(code,state){
+  const s=stripPhotos(state);
+  await _db.ref(`games/${code}`).set(s);
+  savePhotos(code,state);
 }
-
-async function fbLoad(code) {
-  const snap = await _db.ref(`games/${code}`).get();
-  if (!snap.exists()) return null;
-  return mergePhotosFromLocal(code, snap.val());
+async function fbLoad(code){
+  const snap=await _db.ref(`games/${code}`).get();
+  if(!snap.exists())return null;
+  return mergePhotos(code,snap.val());
 }
-
-function fbSubscribe(code, callback) {
-  const ref = _db.ref(`games/${code}`);
-  ref.on('value', (snap) => {
-    if (snap.exists()) callback(mergePhotosFromLocal(code, snap.val()));
-  });
-  return () => ref.off('value');
+function fbSub(code,cb){
+  const ref=_db.ref(`games/${code}`);
+  ref.on('value',snap=>{if(snap.exists())cb(mergePhotos(code,snap.val()))});
+  return()=>ref.off('value');
 }
-
-// 写真(base64)はlocalStorageに保存（Firebaseの1MB制限対策）
-function stripPhotos(state) {
-  const s = JSON.parse(JSON.stringify(state));
-  s.teams = s.teams.map(t => ({
-    ...t,
-    logs: t.logs.map(l => ({...l, photo: l.photo ? '__local__' : null}))
-  }));
-  if (s.pendingApprovals) {
-    s.pendingApprovals = s.pendingApprovals.map(a => ({...a, photo: a.photo ? '__local__' : null}));
-  }
+function stripPhotos(state){
+  const s=JSON.parse(JSON.stringify(state));
+  s.teams=(s.teams||[]).map(t=>({...t,logs:(t.logs||[]).map(l=>({...l,photo:l.photo?'__local__':null}))}));
+  if(s.pendingApprovals)s.pendingApprovals=s.pendingApprovals.map(a=>({...a,photo:a.photo?'__local__':null}));
   return s;
 }
-
-function savePhotosLocally(code, state) {
-  const photos = {};
-  state.teams.forEach(t => {
-    t.logs.forEach((l, i) => {
-      if (l.photo && l.photo !== '__local__') photos[`log_${t.id}_${i}`] = l.photo;
-    });
-  });
-  if (state.pendingApprovals) {
-    state.pendingApprovals.forEach(a => {
-      if (a.photo && a.photo !== '__local__') photos[`appr_${a.id}`] = a.photo;
-    });
-  }
-  try { localStorage.setItem(`photos_${code}`, JSON.stringify(photos)); } catch(e) {}
+function savePhotos(code,state){
+  const p={};
+  (state.teams||[]).forEach(t=>(t.logs||[]).forEach((l,i)=>{if(l.photo&&l.photo!=='__local__')p[`log_${t.id}_${i}`]=l.photo}));
+  (state.pendingApprovals||[]).forEach(a=>{if(a.photo&&a.photo!=='__local__')p[`appr_${a.id}`]=a.photo});
+  try{localStorage.setItem(`photos_${code}`,JSON.stringify(p))}catch(e){}
 }
-
-function mergePhotosFromLocal(code, state) {
-  let photos = {};
-  try { photos = JSON.parse(localStorage.getItem(`photos_${code}`) || '{}'); } catch(e) {}
-  const s = JSON.parse(JSON.stringify(state));
-  s.teams = (s.teams || []).map(t => ({
-    ...t,
-    logs: (t.logs || []).map((l, i) => ({
-      ...l,
-      photo: l.photo === '__local__' ? (photos[`log_${t.id}_${i}`] || null) : l.photo
-    }))
-  }));
-  if (s.pendingApprovals) {
-    s.pendingApprovals = s.pendingApprovals.map(a => ({
-      ...a,
-      photo: a.photo === '__local__' ? (photos[`appr_${a.id}`] || null) : a.photo
-    }));
-  }
+function mergePhotos(code,state){
+  let p={};try{p=JSON.parse(localStorage.getItem(`photos_${code}`)||'{}')}catch(e){}
+  const s=JSON.parse(JSON.stringify(state));
+  s.teams=(s.teams||[]).map(t=>({...t,logs:(t.logs||[]).map((l,i)=>({...l,photo:l.photo==='__local__'?(p[`log_${t.id}_${i}`]||null):l.photo}))}));
+  if(s.pendingApprovals)s.pendingApprovals=s.pendingApprovals.map(a=>({...a,photo:a.photo==='__local__'?(p[`appr_${a.id}`]||null):a.photo}));
   return s;
 }
 
 // ── CONSTANTS ──
 const TEAM_COLORS=['#e60012','#f68b1e','#f5c518','#00a650','#00b2d6','#8f76d6','#e8508a','#009bbf'];
+
+// 路線定義
 const METRO_LINES={
   ginza:{name:'銀座線',color:'#f5a623',short:'G',op:'metro'},
   marunouchi:{name:'丸ノ内線',color:'#e60012',short:'M',op:'metro'},
+  marunouchi_branch:{name:'丸ノ内線分岐',color:'#e60012',short:'Mb',op:'metro'},
   hibiya:{name:'日比谷線',color:'#9b9ea0',short:'H',op:'metro'},
   tozai:{name:'東西線',color:'#009bbf',short:'T',op:'metro'},
   chiyoda:{name:'千代田線',color:'#00bb85',short:'C',op:'metro'},
@@ -310,43 +278,186 @@ const METRO_LINES={
   shinjuku_toei:{name:'新宿線',color:'#6cbb5a',short:'S',op:'toei'},
   oedo:{name:'大江戸線',color:'#b5006e',short:'E',op:'toei'},
 };
-const STATIONS=[
-  {id:'asakusa',name:'浅草',line:'ginza'},{id:'ueno',name:'上野',line:'ginza'},
-  {id:'ginza',name:'銀座',line:'ginza'},{id:'shimbashi',name:'新橋',line:'ginza'},
-  {id:'toranomon',name:'虎ノ門',line:'ginza'},{id:'nihonbashi',name:'日本橋',line:'ginza'},
-  {id:'shinjuku',name:'新宿',line:'marunouchi'},{id:'ikebukuro',name:'池袋',line:'marunouchi'},
-  {id:'otemachi',name:'大手町',line:'marunouchi'},{id:'tokyo',name:'東京',line:'marunouchi'},
-  {id:'yotsuya',name:'四ツ谷',line:'marunouchi'},{id:'honancho',name:'方南町',line:'marunouchi'},
-  {id:'akihabara',name:'秋葉原',line:'hibiya'},{id:'hibiya',name:'日比谷',line:'hibiya'},
-  {id:'roppongi',name:'六本木',line:'hibiya'},{id:'ebisu',name:'恵比寿',line:'hibiya'},
-  {id:'naka-meguro',name:'中目黒',line:'hibiya'},{id:'kayabacho',name:'茅場町',line:'hibiya'},
-  {id:'kitasenju',name:'北千住',line:'hibiya'},{id:'tsukiji',name:'築地',line:'hibiya'},
-  {id:'nakano',name:'中野',line:'tozai'},{id:'takadanobaba',name:'高田馬場',line:'tozai'},
-  {id:'kudanshita',name:'九段下',line:'tozai'},{id:'monzen',name:'門前仲町',line:'tozai'},
-  {id:'nishi-funabashi',name:'西船橋',line:'tozai'},{id:'koenji',name:'高円寺',line:'tozai'},
-  {id:'omote-sando',name:'表参道',line:'chiyoda'},{id:'yoyogi-uehara',name:'代々木上原',line:'chiyoda'},
-  {id:'meiji-jingumae',name:'明治神宮前',line:'chiyoda'},{id:'nogizaka',name:'乃木坂',line:'chiyoda'},
-  {id:'akasaka',name:'赤坂',line:'chiyoda'},{id:'yushima',name:'湯島',line:'chiyoda'},
-  {id:'yurakucho',name:'有楽町',line:'yurakucho'},{id:'shiodome',name:'汐留',line:'yurakucho'},
-  {id:'tatsumi',name:'辰巳',line:'yurakucho'},{id:'shinkiba',name:'新木場',line:'yurakucho'},
-  {id:'nagatacho',name:'永田町',line:'hanzomon'},{id:'aoyama-itchome',name:'青山一丁目',line:'hanzomon'},
-  {id:'shibuya',name:'渋谷',line:'hanzomon'},{id:'oshiage',name:'押上',line:'hanzomon'},
-  {id:'korakuen',name:'後楽園',line:'namboku'},{id:'azabu-juban',name:'麻布十番',line:'namboku'},
-  {id:'shirokanedai',name:'白金台',line:'namboku'},{id:'roppongi-1chome',name:'六本木一丁目',line:'namboku'},
-  {id:'meguro',name:'目黒',line:'namboku'},
-  {id:'sangen-jaya',name:'三軒茶屋',line:'fukutoshin'},{id:'kagurazaka',name:'神楽坂',line:'fukutoshin'},
-  {id:'zoshigaya',name:'雑司が谷',line:'fukutoshin'},
-  {id:'ryogoku',name:'両国',line:'oedo'},{id:'kiyosumi-shirakawa',name:'清澄白河',line:'oedo'},
-  {id:'ueno-okachimachi',name:'上野御徒町',line:'oedo'},{id:'morishita',name:'森下',line:'oedo'},
-  {id:'shinjuku-sanchome',name:'新宿三丁目',line:'shinjuku_toei'},
-  {id:'jimbocho',name:'神保町',line:'shinjuku_toei'},{id:'iwamoto-cho',name:'岩本町',line:'shinjuku_toei'},
-  {id:'mita-st',name:'三田',line:'mita'},{id:'sengakuji',name:'泉岳寺',line:'asakusa'},
-  {id:'higashi-ginza',name:'東銀座',line:'asakusa'},{id:'ningyocho',name:'人形町',line:'asakusa'},
+
+// 難易度定義: diff=1(簡単:3路線以上) diff=2(普通:2路線) diff=3(難しい:1路線)
+// 固定駅: 月島・平和台・西葛西・王子
+const FIXED_STATIONS=['月島','平和台','西葛西','王子'];
+
+const ALL_STATIONS=[
+  // 難易度1（3路線以上）
+  {id:'otemachi',name:'大手町',line:'marunouchi',diff:1,numLines:4},
+  {id:'ginza',name:'銀座',line:'ginza',diff:1,numLines:3},
+  {id:'omote-sando',name:'表参道',line:'chiyoda',diff:1,numLines:3},
+  {id:'shibuya',name:'渋谷',line:'hanzomon',diff:1,numLines:3},
+  {id:'ikebukuro',name:'池袋',line:'marunouchi',diff:1,numLines:3},
+  {id:'kasumigaseki',name:'霞ヶ関',line:'marunouchi',diff:1,numLines:3},
+  {id:'iidabashi',name:'飯田橋',line:'tozai',diff:1,numLines:3},
+  {id:'nagatacho',name:'永田町',line:'hanzomon',diff:1,numLines:3},
+  // 難易度2（2路線）
+  {id:'ueno',name:'上野',line:'ginza',diff:2,numLines:2},
+  {id:'mitsukoshimae',name:'三越前',line:'ginza',diff:2,numLines:2},
+  {id:'nihonbashi',name:'日本橋',line:'ginza',diff:2,numLines:2},
+  {id:'tameike-sanno',name:'溜池山王',line:'ginza',diff:2,numLines:2},
+  {id:'akasaka-mitsuke',name:'赤坂見附',line:'ginza',diff:2,numLines:2},
+  {id:'aoyama-itchome',name:'青山一丁目',line:'ginza',diff:2,numLines:2},
+  {id:'korakuen',name:'後楽園',line:'marunouchi',diff:2,numLines:2},
+  {id:'kokkai-gijidomae',name:'国会議事堂前',line:'marunouchi',diff:2,numLines:2},
+  {id:'yotsuya',name:'四ツ谷',line:'marunouchi',diff:2,numLines:2},
+  {id:'shinjuku-sanchome',name:'新宿三丁目',line:'marunouchi',diff:2,numLines:2},
+  {id:'kita-senju',name:'北千住',line:'hibiya',diff:2,numLines:2},
+  {id:'kayabacho',name:'茅場町',line:'hibiya',diff:2,numLines:2},
+  {id:'hibiya',name:'日比谷',line:'hibiya',diff:2,numLines:2},
+  {id:'kudanshita',name:'九段下',line:'tozai',diff:2,numLines:2},
+  {id:'meiji-jingumae',name:'明治神宮前',line:'chiyoda',diff:2,numLines:2},
+  {id:'kotake-mukaihara',name:'小竹向原',line:'yurakucho',diff:2,numLines:2},
+  {id:'senkawa',name:'千川',line:'yurakucho',diff:2,numLines:2},
+  {id:'kanamecho',name:'要町',line:'yurakucho',diff:2,numLines:2},
+  {id:'ichigaya',name:'市ヶ谷',line:'yurakucho',diff:2,numLines:2},
+  // 難易度3（1路線）
+  {id:'asakusa',name:'浅草',line:'ginza',diff:3,numLines:1},
+  {id:'tawaramachi',name:'田原町',line:'ginza',diff:3,numLines:1},
+  {id:'inarisho',name:'稲荷町',line:'ginza',diff:3,numLines:1},
+  {id:'ueno-hirokoji',name:'上野広小路',line:'ginza',diff:3,numLines:1},
+  {id:'suehirocho',name:'末広町',line:'ginza',diff:3,numLines:1},
+  {id:'kanda-ginza',name:'神田',line:'ginza',diff:3,numLines:1},
+  {id:'kyobashi',name:'京橋',line:'ginza',diff:3,numLines:1},
+  {id:'shimbashi',name:'新橋',line:'ginza',diff:3,numLines:1},
+  {id:'toranomon',name:'虎ノ門',line:'ginza',diff:3,numLines:1},
+  {id:'gaien-mae',name:'外苑前',line:'ginza',diff:3,numLines:1},
+  {id:'shin-otsuka',name:'新大塚',line:'marunouchi',diff:3,numLines:1},
+  {id:'myogadani',name:'茗荷谷',line:'marunouchi',diff:3,numLines:1},
+  {id:'hongo-sanchome',name:'本郷三丁目',line:'marunouchi',diff:3,numLines:1},
+  {id:'ochanomizu',name:'御茶ノ水',line:'marunouchi',diff:3,numLines:1},
+  {id:'awajimachi',name:'淡路町',line:'marunouchi',diff:3,numLines:1},
+  {id:'tokyo',name:'東京',line:'marunouchi',diff:3,numLines:1},
+  {id:'yotsuya-sanchome',name:'四谷三丁目',line:'marunouchi',diff:3,numLines:1},
+  {id:'shinjuku-gyoenmae',name:'新宿御苑前',line:'marunouchi',diff:3,numLines:1},
+  {id:'shinjuku',name:'新宿',line:'marunouchi',diff:3,numLines:1},
+  {id:'nishi-shinjuku',name:'西新宿',line:'marunouchi',diff:3,numLines:1},
+  {id:'nakano-sakaue',name:'中野坂上',line:'marunouchi',diff:3,numLines:1},
+  {id:'shin-nakano',name:'新中野',line:'marunouchi',diff:3,numLines:1},
+  {id:'higashi-koenji',name:'東高円寺',line:'marunouchi',diff:3,numLines:1},
+  {id:'shin-koenji',name:'新高円寺',line:'marunouchi',diff:3,numLines:1},
+  {id:'minami-asagaya',name:'南阿佐ヶ谷',line:'marunouchi',diff:3,numLines:1},
+  {id:'ogikubo',name:'荻窪',line:'marunouchi',diff:3,numLines:1},
+  {id:'nakano-shimbashi',name:'中野新橋',line:'marunouchi_branch',diff:3,numLines:1},
+  {id:'nakano-fujimido',name:'中野富士見町',line:'marunouchi_branch',diff:3,numLines:1},
+  {id:'honancho',name:'方南町',line:'marunouchi_branch',diff:3,numLines:1},
+  {id:'minami-senju',name:'南千住',line:'hibiya',diff:3,numLines:1},
+  {id:'minowa',name:'三ノ輪',line:'hibiya',diff:3,numLines:1},
+  {id:'iriya',name:'入谷',line:'hibiya',diff:3,numLines:1},
+  {id:'naka-okachimachi',name:'仲御徒町',line:'hibiya',diff:3,numLines:1},
+  {id:'akihabara',name:'秋葉原',line:'hibiya',diff:3,numLines:1},
+  {id:'kodemmacho',name:'小伝馬町',line:'hibiya',diff:3,numLines:1},
+  {id:'ningyocho',name:'人形町',line:'hibiya',diff:3,numLines:1},
+  {id:'hatchobori',name:'八丁堀',line:'hibiya',diff:3,numLines:1},
+  {id:'tsukiji',name:'築地',line:'hibiya',diff:3,numLines:1},
+  {id:'higashi-ginza',name:'東銀座',line:'hibiya',diff:3,numLines:1},
+  {id:'toranomon-hills',name:'虎ノ門ヒルズ',line:'hibiya',diff:3,numLines:1},
+  {id:'kamiyacho',name:'神谷町',line:'hibiya',diff:3,numLines:1},
+  {id:'roppongi',name:'六本木',line:'hibiya',diff:3,numLines:1},
+  {id:'hiroo',name:'広尾',line:'hibiya',diff:3,numLines:1},
+  {id:'ebisu',name:'恵比寿',line:'hibiya',diff:3,numLines:1},
+  {id:'naka-meguro',name:'中目黒',line:'hibiya',diff:3,numLines:1},
+  {id:'nakano',name:'中野',line:'tozai',diff:3,numLines:1},
+  {id:'ochiai',name:'落合',line:'tozai',diff:3,numLines:1},
+  {id:'takadanobaba',name:'高田馬場',line:'tozai',diff:3,numLines:1},
+  {id:'waseda',name:'早稲田',line:'tozai',diff:3,numLines:1},
+  {id:'kagurazaka',name:'神楽坂',line:'tozai',diff:3,numLines:1},
+  {id:'takebashi',name:'竹橋',line:'tozai',diff:3,numLines:1},
+  {id:'monzen-nakacho',name:'門前仲町',line:'tozai',diff:3,numLines:1},
+  {id:'kiba',name:'木場',line:'tozai',diff:3,numLines:1},
+  {id:'tatsumi',name:'辰巳',line:'yurakucho',diff:3,numLines:1},
+  {id:'shinkiba',name:'新木場',line:'yurakucho',diff:3,numLines:1},
+  {id:'higashi-kiba',name:'東陽町',line:'tozai',diff:3,numLines:1},
+  {id:'minami-sunamachi',name:'南砂町',line:'tozai',diff:3,numLines:1},
+  {id:'nishi-kasai',name:'西葛西',line:'tozai',diff:3,numLines:1,fixed:true},
+  {id:'kasai',name:'葛西',line:'tozai',diff:3,numLines:1},
+  {id:'urayasu',name:'浦安',line:'tozai',diff:3,numLines:1},
+  {id:'minami-gyotoku',name:'南行徳',line:'tozai',diff:3,numLines:1},
+  {id:'gyotoku',name:'行徳',line:'tozai',diff:3,numLines:1},
+  {id:'myoden',name:'妙典',line:'tozai',diff:3,numLines:1},
+  {id:'baraki-nakayama',name:'原木中山',line:'tozai',diff:3,numLines:1},
+  {id:'nishi-funabashi',name:'西船橋',line:'tozai',diff:3,numLines:1},
+  {id:'yoyogi-uehara',name:'代々木上原',line:'chiyoda',diff:3,numLines:1},
+  {id:'yoyogi-koen',name:'代々木公園',line:'chiyoda',diff:3,numLines:1},
+  {id:'nogizaka',name:'乃木坂',line:'chiyoda',diff:3,numLines:1},
+  {id:'akasaka',name:'赤坂',line:'chiyoda',diff:3,numLines:1},
+  {id:'nijubashimae',name:'二重橋前',line:'chiyoda',diff:3,numLines:1},
+  {id:'shin-ochanomizu',name:'新御茶ノ水',line:'chiyoda',diff:3,numLines:1},
+  {id:'yushima',name:'湯島',line:'chiyoda',diff:3,numLines:1},
+  {id:'nezu',name:'根津',line:'chiyoda',diff:3,numLines:1},
+  {id:'sendagi',name:'千駄木',line:'chiyoda',diff:3,numLines:1},
+  {id:'nishi-nippori',name:'西日暮里',line:'chiyoda',diff:3,numLines:1},
+  {id:'machiya',name:'町屋',line:'chiyoda',diff:3,numLines:1},
+  {id:'ayase',name:'綾瀬',line:'chiyoda',diff:3,numLines:1},
+  {id:'kita-ayase',name:'北綾瀬',line:'chiyoda',diff:3,numLines:1},
+  {id:'wakoshi',name:'和光市',line:'yurakucho',diff:3,numLines:1},
+  {id:'chikatetsu-narimasu',name:'地下鉄成増',line:'yurakucho',diff:3,numLines:1},
+  {id:'chikatetsu-akatsuka',name:'地下鉄赤塚',line:'yurakucho',diff:3,numLines:1},
+  {id:'heiwadai',name:'平和台',line:'yurakucho',diff:3,numLines:1,fixed:true},
+  {id:'hikawadai',name:'氷川台',line:'yurakucho',diff:3,numLines:1},
+  {id:'higashi-ikebukuro',name:'東池袋',line:'yurakucho',diff:3,numLines:1},
+  {id:'gokokuji',name:'護国寺',line:'yurakucho',diff:3,numLines:1},
+  {id:'edogawabashi',name:'江戸川橋',line:'yurakucho',diff:3,numLines:1},
+  {id:'kojimachi',name:'麹町',line:'yurakucho',diff:3,numLines:1},
+  {id:'sakuradamon',name:'桜田門',line:'yurakucho',diff:3,numLines:1},
+  {id:'yurakucho',name:'有楽町',line:'yurakucho',diff:3,numLines:1},
+  {id:'ginza-itchome',name:'銀座一丁目',line:'yurakucho',diff:3,numLines:1},
+  {id:'shintomicho',name:'新富町',line:'yurakucho',diff:3,numLines:1},
+  {id:'tsukishima',name:'月島',line:'yurakucho',diff:3,numLines:1,fixed:true},
+  {id:'toyosu',name:'豊洲',line:'yurakucho',diff:3,numLines:1},
+  {id:'oshiage',name:'押上',line:'hanzomon',diff:3,numLines:1},
+  {id:'kinshicho',name:'錦糸町',line:'hanzomon',diff:3,numLines:1},
+  {id:'sumiyoshi',name:'住吉',line:'hanzomon',diff:3,numLines:1},
+  {id:'kiyosumi-shirakawa',name:'清澄白河',line:'hanzomon',diff:3,numLines:1},
+  {id:'suitengumae',name:'水天宮前',line:'hanzomon',diff:3,numLines:1},
+  {id:'jimbocho',name:'神保町',line:'hanzomon',diff:3,numLines:1},
+  {id:'hanzo-mon',name:'半蔵門',line:'hanzomon',diff:3,numLines:1},
+  {id:'meguro',name:'目黒',line:'namboku',diff:3,numLines:1},
+  {id:'shirokanedai',name:'白金台',line:'namboku',diff:3,numLines:1},
+  {id:'shirokanehigashi',name:'白金高輪',line:'namboku',diff:3,numLines:1},
+  {id:'azabu-juban',name:'麻布十番',line:'namboku',diff:3,numLines:1},
+  {id:'roppongi-itchome',name:'六本木一丁目',line:'namboku',diff:3,numLines:1},
+  {id:'todaimae',name:'東大前',line:'namboku',diff:3,numLines:1},
+  {id:'hon-komagome',name:'本駒込',line:'namboku',diff:3,numLines:1},
+  {id:'komagome',name:'駒込',line:'namboku',diff:3,numLines:1},
+  {id:'nishigahara',name:'西ヶ原',line:'namboku',diff:3,numLines:1},
+  {id:'oji',name:'王子',line:'namboku',diff:3,numLines:1,fixed:true},
+  {id:'oji-kamiya',name:'王子神谷',line:'namboku',diff:3,numLines:1},
+  {id:'shimo',name:'志茂',line:'namboku',diff:3,numLines:1},
+  {id:'akabane-iwabuchi',name:'赤羽岩淵',line:'namboku',diff:3,numLines:1},
+  {id:'zoshigaya',name:'雑司が谷',line:'fukutoshin',diff:3,numLines:1},
+  {id:'nishi-waseda',name:'西早稲田',line:'fukutoshin',diff:3,numLines:1},
+  {id:'higashi-shinjuku',name:'東新宿',line:'fukutoshin',diff:3,numLines:1},
+  {id:'kita-sando',name:'北参道',line:'fukutoshin',diff:3,numLines:1},
 ];
-const TALL_STATIONS=new Set(['shinjuku','ikebukuro','shibuya','roppongi','tokyo','otemachi','hibiya',
-  'yurakucho','shimbashi','shiodome','nagatacho','aoyama-itchome','omote-sando','akasaka','nogizaka',
-  'oshiage','kitasenju','azabu-juban','roppongi-1chome','toranomon','mita-st','sengakuji','higashi-ginza',
-  'ebisu','naka-meguro','meguro','shinkiba','tatsumi']);
+
+// 都営地下鉄（フル路線用）
+const TOEI_STATIONS=[
+  {id:'sengakuji',name:'泉岳寺',line:'asakusa',diff:3,numLines:1,op:'toei'},
+  {id:'mita-toei',name:'三田',line:'mita',diff:2,numLines:2,op:'toei'},
+  {id:'jimbocho-toei',name:'神保町',line:'shinjuku_toei',diff:2,numLines:2,op:'toei'},
+  {id:'ryogoku',name:'両国',line:'oedo',diff:3,numLines:1,op:'toei'},
+  {id:'morishita',name:'森下',line:'oedo',diff:3,numLines:1,op:'toei'},
+  {id:'kiyosumi-toei',name:'清澄白河',line:'oedo',diff:3,numLines:1,op:'toei'},
+  {id:'ueno-okachimachi',name:'上野御徒町',line:'oedo',diff:3,numLines:1,op:'toei'},
+  {id:'higashi-shinjuku-toei',name:'東新宿',line:'shinjuku_toei',diff:3,numLines:1,op:'toei'},
+];
+
+// ビンゴマス重要度マップ（重要度3=四隅、重要度2=その他）
+const BINGO_IMPORTANCE=[
+  3,2,2,2,3,
+  2,2,2,2,2,
+  2,2,0,2,2, // 12=FREE
+  2,2,2,2,2,
+  3,2,2,2,3,
+];
+// 重要度3のインデックス（四隅）
+const CORNER_INDICES=[0,4,20,24];
+// 重要度2のインデックス
+const NORMAL_INDICES=[1,2,3,5,6,7,8,9,10,11,13,14,15,16,17,18,19,21,22,23];
+
 const MISSIONS=[
   {id:'m01',text:'その駅名が入った飲食店に入る（チェーン除く）',evidence:'写真',icon:'🍜'},
   {id:'m02',text:'御朱印をもらう',evidence:'御朱印帳 or 紙',icon:'⛩️'},
@@ -374,14 +485,56 @@ const MISSIONS=[
   {id:'m24',text:'区や市の公式ゆるキャラ像・パネルを撮影',evidence:'写真',icon:'🐾'},
 ];
 
-function genCard(stations){
-  const sh=[...stations].sort(()=>Math.random()-.5).slice(0,24);
-  return [...Array(25)].map((_,i)=>i===12?{id:'FREE',name:'FREE',line:null,isFree:true}:sh[i-(i>12?1:0)]);
+// ── BINGO GENERATION ──
+function getStationPool(routeMode){
+  const metro=ALL_STATIONS;
+  if(routeMode==='full')return [...metro,...TOEI_STATIONS];
+  return metro;
 }
+
+function genStationCard(routeMode='metro'){
+  const pool=getStationPool(routeMode);
+  const diff3=pool.filter(s=>s.diff===3);
+  const diff2=pool.filter(s=>s.diff===2);
+  const diff1=pool.filter(s=>s.diff===1);
+  const fixed=pool.filter(s=>s.fixed);
+
+  // 四隅に配置する駅を決定
+  // 固定候補からランダム2つ選ぶ
+  const shuffledFixed=[...fixed].sort(()=>Math.random()-.5);
+  const fixedCorner=shuffledFixed.slice(0,2);
+  // 残り2つの四隅は固定でないdiff3からランダム
+  const nonFixedDiff3=diff3.filter(s=>!s.fixed).sort(()=>Math.random()-.5);
+  const randomCorner=nonFixedDiff3.slice(0,2);
+  const cornerStations=[...fixedCorner,...randomCorner].sort(()=>Math.random()-.5);
+
+  // 通常マス（20マス）を埋める
+  // 使用済みIDを除外
+  const usedIds=new Set(cornerStations.map(s=>s.id));
+  const remaining=[...diff3,...diff2,...diff1].filter(s=>!usedIds.has(s.id));
+  const shuffledRemaining=remaining.sort(()=>Math.random()-.5);
+  const normalStations=shuffledRemaining.slice(0,20);
+
+  // カード配置
+  const card=new Array(25).fill(null);
+  card[12]={id:'FREE',name:'FREE',line:null,isFree:true,diff:0};
+  let cornerIdx=0,normalIdx=0;
+  for(let i=0;i<25;i++){
+    if(i===12)continue;
+    if(CORNER_INDICES.includes(i)){
+      card[i]=cornerStations[cornerIdx++];
+    } else {
+      card[i]=normalStations[normalIdx++];
+    }
+  }
+  return card;
+}
+
 function genMissionCard(){
   const sh=[...MISSIONS].sort(()=>Math.random()-.5).slice(0,24);
   return [...Array(25)].map((_,i)=>i===12?{id:'FREE',name:'FREE',isFree:true}:sh[i-(i>12?1:0)]);
 }
+
 function checkBingo(card,reached){
   if(!card||!reached)return[];
   const lines=[];
@@ -392,42 +545,74 @@ function checkBingo(card,reached){
   if([4,8,12,16,20].every(ok))lines.push([4,8,12,16,20]);
   return lines;
 }
+
 function genCode(){return Math.random().toString(36).substr(2,6).toUpperCase()}
 function nowTime(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
-function calcScore(team){
-  if(!team)return{masks:0,bingos:0,transfers:0,goalPenalty:0,masksScore:0,bingosScore:0,transferPenalty:0,total:0};
-  const stReached=new Set(team.stationReached||[]);
-  const msReached=new Set(team.missionReached||[]);
-  const stBingo=checkBingo(team.stationCard,stReached);
-  const msBingo=checkBingo(team.missionCard,msReached);
-  const masks=(team.stationReached||[]).filter(id=>id!=='FREE').length+(team.missionReached||[]).filter(id=>id!=='FREE').length;
-  const bingos=stBingo.length+msBingo.length;
-  const transfers=team.transferCount||0;
+
+// ── SCORE CALCULATION ──
+function calcScore(team,config){
+  if(!team)return{stationBingo:0,missionBingo:0,masks:0,total:0,formula:''};
+  const stR=new Set(team.stationReached||[]);
+  const msR=new Set(team.missionReached||[]);
+  const stBingo=checkBingo(team.stationCard,stR);
+  const msBingo=checkBingo(team.missionCard,msR);
+  const stMasks=(team.stationReached||[]).filter(id=>id!=='FREE').length;
+  const msMasks=(team.missionReached||[]).filter(id=>id!=='FREE').length;
+  const mode=config?.mode||'basic';
   const goalPenalty=team.goalPenalty||0;
-  return{masks,bingos,transfers,goalPenalty,masksScore:masks,bingosScore:bingos*3,transferPenalty:transfers*-3,total:masks+bingos*3+transfers*-3+goalPenalty};
+
+  if(mode==='basic'){
+    // マス数 + ビンゴ列数×3
+    const bingoScore=stBingo.length*3;
+    const total=stMasks+bingoScore+goalPenalty;
+    return{stationBingo:stBingo.length,missionBingo:0,masks:stMasks,total,
+      formula:`${stMasks} + ${stBingo.length}×3 = ${total}`,goalPenalty};
+  } else {
+    // (駅ビンゴ列数+1) × (ミッションビンゴ列数+1)
+    const total=(stBingo.length+1)*(msBingo.length+1)+goalPenalty;
+    const masks=stMasks+msMasks;
+    return{stationBingo:stBingo.length,missionBingo:msBingo.length,masks,total,
+      formula:`(${stBingo.length}+1)×(${msBingo.length}+1)`,goalPenalty};
+  }
 }
-function getPhase(startedAt){
-  const e=(Date.now()-startedAt)/60000;
-  if(e<180)return'am';if(e<240)return'lunch';return'pm';
-}
-function initGameState(teamName,teamColor){
+
+// ── GAME STATE ──
+function initGameState(teamName,teamColor,config){
+  const code=genCode();
+  // v5: config object for future SaaS
+  const gameConfig={
+    mode:config.mode,       // 'basic' | 'double'
+    routeMode:config.routeMode, // 'metro' | 'full'
+    goalPenaltyEnabled:false,
+    goalPenaltyAmount:-5,
+    // future: organizer settings, plan limits etc.
+    version:'v5',
+  };
   return{
-    gameCode:genCode(),
-    teams:[{id:'t1',name:teamName,color:teamColor,
-      stationCard:genCard(STATIONS),missionCard:genMissionCard(),
-      stationReached:['FREE'],missionReached:['FREE'],missionSubmissions:{},
-      transferCount:0,currentStation:null,goalPenalty:0,
-      logs:[{type:'st',title:'ゲーム開始！',sub:'大手町駅からスタート',time:nowTime()}]}],
+    gameCode:code,
+    config:gameConfig,
+    teams:[{
+      id:'t1',name:teamName,color:teamColor,
+      stationCard:genStationCard(config.routeMode),
+      missionCard:config.mode==='double'?genMissionCard():null,
+      stationReached:['FREE'],missionReached:['FREE'],
+      missionSubmissions:{},goalPenalty:0,
+      logs:[{type:'st',title:'ゲーム開始！',sub:'大手町駅からスタート',time:nowTime()}]
+    }],
     events:[
       {id:'e1',name:'ライブ会場キャパ対決',desc:'午前中に最大収容人数のライブ会場を発見！13:00に合流して発表',type:'time',status:'pending',scheduledTime:'13:00',reward:'駅名ビンゴ任意1マス',triggeredAt:null},
-      {id:'e2',name:'午後の部スタート',desc:'ダブルビンゴ本戦！18:00まで自由に移動',type:'time',status:'pending',scheduledTime:'14:00',reward:'',triggeredAt:null},
     ],
     startedAt:Date.now(),gameDuration:8*60*60*1000,
     pendingApprovals:[],
   };
 }
 
-// ── TOAST ──
+function getPhase(startedAt){
+  const e=(Date.now()-startedAt)/60000;
+  if(e<180)return'am';if(e<240)return'lunch';return'pm';
+}
+
+// ── COMPONENTS ──
 function Toast({toasts}){
   return<div className="tcon">{toasts.map(t=>(
     <div key={t.id} className={`toast ${t.type}`}>
@@ -438,42 +623,56 @@ function Toast({toasts}){
   ))}</div>;
 }
 
-// ── BINGO PAGE ──
-function BingoPage({team}){
-  const[view,setView]=useState('station');
+function DiffLabel({diff}){
+  if(!diff||diff===0)return null;
+  const label=diff===1?'易':diff===2?'普':'難';
+  const cls=diff===1?'diff1':diff===2?'diff2':'diff3';
+  return<span className={`diff-badge ${cls}`}>{label}</span>;
+}
+
+function BingoPage({team,config}){
+  const mode=config?.mode||'basic';
+  const [view,setView]=useState('station');
   const stR=useMemo(()=>new Set(team.stationReached||[]),[team.stationReached]);
   const msR=useMemo(()=>new Set(team.missionReached||[]),[team.missionReached]);
   const stB=useMemo(()=>checkBingo(team.stationCard,stR),[team.stationCard,stR]);
   const msB=useMemo(()=>checkBingo(team.missionCard,msR),[team.missionCard,msR]);
   const stBS=new Set(stB.flat());const msBS=new Set(msB.flat());
-  const score=calcScore(team);
+  const score=calcScore(team,config);
+
   return<div>
-    <div className="btabs">
+    {mode==='double'&&<div className="btabs">
       <button className={`btab station ${view==='station'?'on':''}`} onClick={()=>setView('station')}>🚇 駅名 ({stB.length} BINGO)</button>
       <button className={`btab mission ${view==='mission'?'on':''}`} onClick={()=>setView('mission')}>🎯 ミッション ({msB.length} BINGO)</button>
-    </div>
-    {view==='station'&&<>
+    </div>}
+
+    {(view==='station'||mode==='basic')&&<>
       <div className="bgrid">
         {(team.stationCard||[]).map((cell,i)=>{
           const hit=cell.isFree||stR.has(cell.id);
           const bl=stBS.has(i)&&hit;
           const ln=cell.line?METRO_LINES[cell.line]:null;
+          const isCorner=CORNER_INDICES.includes(i);
           return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${bl?'bline':''}`}>
+            {!cell.isFree&&<DiffLabel diff={cell.diff}/>}
+            {cell.fixed&&!hit&&<span className="fixed-badge">★</span>}
             {ln&&<div className="bln" style={{color:ln.color}}>{ln.short}</div>}
             <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
           </div>;
         })}
       </div>
-      <div style={{marginTop:8,display:'flex',gap:6,flexWrap:'wrap'}}>
-        {Object.entries(METRO_LINES).map(([k,l])=>(
-          <div key={k} style={{display:'flex',alignItems:'center',gap:3,fontSize:9,color:'var(--muted)'}}>
-            <div style={{width:7,height:7,borderRadius:'50%',background:l.color}}></div>
-            {l.op==='toei'?'都営':''}{l.name}
-          </div>
-        ))}
+      <div style={{marginTop:8,display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+        <span style={{fontSize:9,color:'var(--diff3)',fontWeight:700}}>難</span>
+        <span style={{fontSize:9,color:'var(--muted)'}}>難易度高（1路線）</span>
+        <span style={{fontSize:9,color:'var(--diff2)',fontWeight:700}}>普</span>
+        <span style={{fontSize:9,color:'var(--muted)'}}>2路線</span>
+        <span style={{fontSize:9,color:'var(--diff1)',fontWeight:700}}>易</span>
+        <span style={{fontSize:9,color:'var(--muted)'}}>3路線以上</span>
+        <span style={{fontSize:9,color:'var(--orange)'}}>★固定駅</span>
       </div>
     </>}
-    {view==='mission'&&<>
+
+    {view==='mission'&&mode==='double'&&<>
       <div className="bgrid">
         {(team.missionCard||[]).map((cell,i)=>{
           const hit=cell.isFree||msR.has(cell.id);
@@ -485,56 +684,71 @@ function BingoPage({team}){
           </div>;
         })}
       </div>
-      <div style={{marginTop:8,fontSize:10,color:'var(--muted)',display:'flex',gap:10,flexWrap:'wrap'}}>
-        <span><span style={{color:'var(--green)'}}>■</span> 承認済み</span>
-        <span><span style={{color:'var(--orange)'}}>■</span> 審査中</span>
-      </div>
     </>}
-    <div className="score-detail" style={{marginTop:12}}>
-      <div className="score-row"><span className="label">マス数（{score.masks}マス×1pt）</span><span className="val">{score.masksScore}pt</span></div>
-      <div className="score-row"><span className="label">ビンゴ（{score.bingos}列×3pt）</span><span className="val">{score.bingosScore}pt</span></div>
-      <div className="score-row"><span className="label">乗り換えペナルティ（{score.transfers}回）</span><span className="val neg">{score.transferPenalty}pt</span></div>
-      {score.goalPenalty!==0&&<div className="score-row"><span className="label">ゴールペナルティ</span><span className="val neg">{score.goalPenalty}pt</span></div>}
+
+    {/* スコア表示 */}
+    {mode==='double'&&<div className="multiply-display" style={{marginTop:12}}>
+      <div className="multiply-label">現在のスコア計算式</div>
+      <div className="multiply-formula">({score.stationBingo}+1) × ({score.missionBingo}+1) = {score.total}</div>
+      <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>
+        両方バランスよく取るほど得点UP！
+      </div>
+    </div>}
+    {mode==='basic'&&<div className="score-detail" style={{marginTop:12}}>
+      <div className="score-row"><span className="label">マス数（{score.masks}マス）</span><span className="val">{score.masks}pt</span></div>
+      <div className="score-row"><span className="label">ビンゴ（{score.stationBingo}列 × 3pt）</span><span className="val">{score.stationBingo*3}pt</span></div>
+      {score.goalPenalty!==0&&<div className="score-row"><span className="label">ゴールペナ</span><span className="val neg">{score.goalPenalty}pt</span></div>}
       <div className="score-row"><span>合計</span><span className="val" style={{fontSize:20}}>{score.total}pt</span></div>
-    </div>
+    </div>}
   </div>;
 }
 
-// ── ARRIVAL PAGE ──
-function ArrivalPage({team,onArrive,onTransfer}){
-  const[selLine,setSelLine]=useState(null);
-  const[search,setSearch]=useState('');
-  const[sel,setSel]=useState(null);
-  const[photoPreview,setPhotoPreview]=useState(null);
+function ArrivalPage({team,config,onArrive}){
+  const [selLine,setSelLine]=useState(null);
+  const [search,setSearch]=useState('');
+  const [sel,setSel]=useState(null);
+  const [photoPreview,setPhotoPreview]=useState(null);
   const fileRef=useRef();
   const reached=new Set(team.stationReached||[]);
   const cardIds=new Set((team.stationCard||[]).map(c=>c.id));
-  const filtered=useMemo(()=>{let s=STATIONS;if(selLine)s=s.filter(x=>x.line===selLine);if(search)s=s.filter(x=>x.name.includes(search));return s;},[selLine,search]);
+  const routeMode=config?.routeMode||'metro';
+  const pool=useMemo(()=>getStationPool(routeMode),[routeMode]);
+  const filtered=useMemo(()=>{
+    let s=pool;
+    if(selLine)s=s.filter(x=>x.line===selLine);
+    if(search)s=s.filter(x=>x.name.includes(search));
+    return s;
+  },[pool,selLine,search]);
   const lastId=(team.stationReached||[]).filter(id=>id!=='FREE').slice(-1)[0];
+  const linesInPool=[...new Set(pool.map(s=>s.line))];
+
   return<div>
-    <button className="transfer-btn" onClick={onTransfer}>🔄 乗り換え記録 <span style={{fontSize:11,opacity:.7}}>（-3pt）　現在 {team.transferCount||0}回</span></button>
     {lastId&&<div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:10}}>
       <div style={{fontSize:10,color:'var(--muted)',marginBottom:3}}>現在地（最終記録）</div>
-      <div style={{fontSize:20,fontWeight:700}}>{STATIONS.find(s=>s.id===lastId)?.name||lastId}</div>
+      <div style={{fontSize:20,fontWeight:700}}>{pool.find(s=>s.id===lastId)?.name||lastId}</div>
     </div>}
     <p className="sec">路線を選ぶ</p>
     <div className="lsel">
       <button className="lbtn" style={{background:!selLine?'rgba(255,255,255,.15)':'var(--card2)',color:'#e8eaf0',borderColor:!selLine?'rgba(255,255,255,.4)':'var(--border)',opacity:!selLine?1:.6}} onClick={()=>setSelLine(null)}>全線</button>
-      {Object.entries(METRO_LINES).map(([k,l])=>(
-        <button key={k} className="lbtn" style={{background:l.color+(selLine===k?'cc':'33'),color:selLine===k?'#fff':l.color,borderColor:l.color,opacity:selLine&&selLine!==k?.5:1}} onClick={()=>setSelLine(selLine===k?null:k)}>{l.op==='toei'?'都営':''}{l.name}</button>
-      ))}
+      {linesInPool.map(k=>{const l=METRO_LINES[k];if(!l)return null;return(
+        <button key={k} className="lbtn" style={{background:l.color+(selLine===k?'cc':'33'),color:selLine===k?'#fff':l.color,borderColor:l.color,opacity:selLine&&selLine!==k?.5:1}} onClick={()=>setSelLine(selLine===k?null:k)}>{l.name}</button>
+      );})}
     </div>
     <input className="sinp" placeholder="駅名で検索..." value={search} onChange={e=>setSearch(e.target.value)}/>
     <div className="slist">
       {filtered.map(st=>{
         const ln=METRO_LINES[st.line];if(!ln)return null;
         const visited=reached.has(st.id);const onCard=cardIds.has(st.id);const isSel=sel?.id===st.id;
+        const diffColor=st.diff===1?'var(--diff1)':st.diff===2?'var(--diff2)':'var(--diff3)';
+        const diffLabel=st.diff===1?'易':st.diff===2?'普':'難';
         return<button key={st.id} className={`sbtn ${onCard?'oncard':''} ${visited?'done':''}`}
           style={isSel?{borderColor:'var(--yellow)',background:'rgba(245,197,24,.1)'}:{}}
           onClick={()=>setSel(isSel?null:st)}>
-          <div className="dot" style={{background:ln.color}}></div><span>{st.name}</span>
-          {onCard&&!visited&&<span style={{fontSize:8,color:'var(--cyan)',marginLeft:'auto'}}>★</span>}
-          {visited&&<span style={{fontSize:8,color:'var(--green)',marginLeft:'auto'}}>✓</span>}
+          <div className="dot" style={{background:ln.color}}></div>
+          <span>{st.name}</span>
+          <span className="sbtn-diff" style={{color:diffColor}}>{diffLabel}</span>
+          {onCard&&!visited&&<span style={{fontSize:8,color:'var(--cyan)',marginLeft:2}}>★</span>}
+          {visited&&<span style={{fontSize:8,color:'var(--green)',marginLeft:2}}>✓</span>}
         </button>;
       })}
     </div>
@@ -551,11 +765,10 @@ function ArrivalPage({team,onArrive,onTransfer}){
   </div>;
 }
 
-// ── MISSION PAGE ──
 function MissionPage({team,onSubmitMission}){
-  const[selMission,setSelMission]=useState(null);
-  const[photoPreview,setPhotoPreview]=useState(null);
-  const[note,setNote]=useState('');
+  const [selMission,setSelMission]=useState(null);
+  const [photoPreview,setPhotoPreview]=useState(null);
+  const [note,setNote]=useState('');
   const fileRef=useRef();
   const msReached=new Set(team.missionReached||[]);
   const subs=team.missionSubmissions||{};
@@ -599,10 +812,11 @@ function MissionPage({team,onSubmitMission}){
   </div>;
 }
 
-// ── SCORE PAGE ──
 function ScorePage({gameState,myTeamId}){
-  const teams=[...(gameState.teams||[])].map(t=>({...t,...calcScore(t)})).sort((a,b)=>b.total-a.total);
+  const config=gameState.config;
+  const teams=[...(gameState.teams||[])].map(t=>({...t,...calcScore(t,config)})).sort((a,b)=>b.total-a.total);
   const rankCls=['g','s','b'];const myTeam=teams.find(t=>t.id===myTeamId);
+  const mode=config?.mode||'basic';
   return<div>
     <div className="rank">
       <div className="rh">RANKING — リアルタイム</div>
@@ -611,7 +825,9 @@ function ScorePage({gameState,myTeamId}){
           <div className={`rn ${rankCls[i]||''}`}>{i+1}</div>
           <div className="rt">
             <div className="rtn"><div className="dot" style={{background:t.color,width:9,height:9}}></div>{t.name}{t.id===myTeamId?' 👈':''}</div>
-            <div className="rtd">{t.masks}マス ・ BINGO {t.bingos} ・ 乗換{t.transfers}回</div>
+            <div className="rtd">
+              {mode==='basic'?`${t.masks}マス ・ BINGO ${t.stationBingo}`:`駅${t.stationBingo}列 ・ ミッション${t.missionBingo}列`}
+            </div>
           </div>
           <div className="rs">{t.total}</div>
         </div>
@@ -619,17 +835,21 @@ function ScorePage({gameState,myTeamId}){
     </div>
     {myTeam&&<>
       <p className="sec">得点内訳</p>
-      <div className="score-detail">
-        <div className="score-row"><span className="label">マス（{myTeam.masks}×1pt）</span><span className="val">{myTeam.masksScore}pt</span></div>
-        <div className="score-row"><span className="label">ビンゴ（{myTeam.bingos}列×3pt）</span><span className="val">{myTeam.bingosScore}pt</span></div>
-        <div className="score-row"><span className="label">乗換ペナ（{myTeam.transfers}回×-3pt）</span><span className="val neg">{myTeam.transferPenalty}pt</span></div>
+      {mode==='double'&&<div className="multiply-display">
+        <div className="multiply-label">スコア計算</div>
+        <div className="multiply-formula">({myTeam.stationBingo}+1) × ({myTeam.missionBingo}+1) = {myTeam.total}</div>
+        <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>式：(駅ビンゴ列数+1) × (ミッション列数+1)</div>
+      </div>}
+      {mode==='basic'&&<div className="score-detail">
+        <div className="score-row"><span className="label">マス数（{myTeam.masks}×1pt）</span><span className="val">{myTeam.masks}pt</span></div>
+        <div className="score-row"><span className="label">ビンゴ（{myTeam.stationBingo}列×3pt）</span><span className="val">{myTeam.stationBingo*3}pt</span></div>
         {myTeam.goalPenalty!==0&&<div className="score-row"><span className="label">ゴールペナ</span><span className="val neg">{myTeam.goalPenalty}pt</span></div>}
         <div className="score-row"><span>合計</span><span className="val" style={{fontSize:22}}>{myTeam.total}pt</span></div>
-      </div>
+      </div>}
       <p className="sec">プレイログ</p>
       <div>{[...(myTeam.logs||[])].reverse().map((log,i)=>(
         <div key={i} className="li">
-          <div className={`lic ${log.type}`}>{log.type==='s'?'📍':log.type==='bingo'?'🎯':log.type==='ms'?'🏅':log.type==='pen'?'🔄':log.type==='ev'?'⚡':'🚀'}</div>
+          <div className={`lic ${log.type}`}>{log.type==='s'?'📍':log.type==='bingo'?'🎯':log.type==='ms'?'🏅':log.type==='ev'?'⚡':'🚀'}</div>
           <div className="lb"><div className="lt">{log.title}</div><div className="ls">{log.sub}</div>
             {log.photo&&<img src={log.photo} style={{width:'100%',maxHeight:70,objectFit:'cover',borderRadius:5,marginTop:5}} alt=""/>}
           </div>
@@ -640,64 +860,63 @@ function ScorePage({gameState,myTeamId}){
   </div>;
 }
 
-// ── GOAL PAGE ──
-function GoalPage({team}){
-  const lastId=(team.stationReached||[]).filter(id=>id!=='FREE').slice(-1)[0];
-  const lastStation=STATIONS.find(s=>s.id===lastId);
-  const isOk=lastStation&&TALL_STATIONS.has(lastStation.id);
-  const goalStations=STATIONS.filter(s=>TALL_STATIONS.has(s.id));
+function RulesPage({config}){
+  const mode=config?.mode||'basic';
+  const routeMode=config?.routeMode||'metro';
   return<div>
-    <div style={{background:'rgba(245,197,24,.08)',border:'1px solid var(--yellow)',borderRadius:10,padding:'10px 12px',marginBottom:12,fontSize:11}}>
-      <div style={{fontWeight:700,color:'var(--yellow)',marginBottom:3}}>🏁 ゴール条件</div>
-      <div style={{color:'var(--muted)'}}>18:00時点の滞在駅に高さ100m以上の建物がなければ <span style={{color:'var(--red)',fontWeight:700}}>−5pt</span></div>
-    </div>
-    <div className={`goal-panel ${isOk?'goal-ok':'goal-ng'}`}>
-      <div style={{fontSize:13,fontWeight:700,display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-        {isOk?<><span>✅</span>現在地はセーフ！</>:<><span>❌</span>現在地はアウト！</>}
+    <div style={{background:'rgba(245,197,24,.1)',border:'1px solid var(--yellow)',borderRadius:10,padding:'10px 12px',marginBottom:10,fontSize:11}}>
+      <div style={{fontWeight:700,color:'var(--yellow)',marginBottom:4}}>現在のゲームモード</div>
+      <div style={{display:'flex',gap:8}}>
+        <span style={{background:'var(--card)',padding:'3px 8px',borderRadius:6,fontSize:11}}>{mode==='basic'?'🎰 ベーシック':'🎯 ダブルビンゴ'}</span>
+        <span style={{background:'var(--card)',padding:'3px 8px',borderRadius:6,fontSize:11}}>{routeMode==='metro'?'🚇 メトロのみ':'🚇 メトロ＋都営'}</span>
       </div>
-      <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>現在地：{lastStation?.name||'未記録'}</div>
-      {!isOk&&<div style={{fontSize:11,color:'var(--red)'}}>このまま18:00を迎えると -5pt</div>}
-      {isOk&&<div style={{fontSize:11,color:'var(--green)'}}>高さ100m以上の建物がある駅です</div>}
     </div>
-    <p className="sec">セーフな駅一覧</p>
-    <div className="goal-stations">{goalStations.map(st=><div key={st.id} className="goal-st-tag">{st.name}</div>)}</div>
-  </div>;
-}
-
-// ── RULES PAGE ──
-function RulesPage(){
-  return<div>
     <div className="rc"><div className="rct"><span>🕐</span>タイムスケジュール</div>
       <table className="stb"><tbody>
-        <tr><td>10:00〜13:00</td><td style={{color:'var(--cyan)'}}>午前：探索＆ライブ会場対決</td></tr>
-        <tr><td>13:00〜14:00</td><td style={{color:'var(--red)'}}>昼休憩・対決イベント発表</td></tr>
-        <tr><td>14:00〜18:00</td><td style={{color:'var(--yellow)'}}>午後：ダブルビンゴ本戦</td></tr>
-        <tr><td>18:00</td><td>終了・スコア集計</td></tr>
+        <tr><td>10:00〜13:00</td><td style={{color:'var(--cyan)'}}>午前：探索＆対決</td></tr>
+        <tr><td>13:00〜14:00</td><td style={{color:'var(--red)'}}>昼休憩・対決イベント</td></tr>
+        <tr><td>14:00〜18:00</td><td style={{color:'var(--yellow)'}}>午後：ビンゴ本戦</td></tr>
       </tbody></table></div>
     <div className="rc"><div className="rct"><span>💯</span>得点ルール</div>
-      <table className="stb"><tbody>
+      {mode==='basic'?<table className="stb"><tbody>
         <tr><td>1マス埋め</td><td className="pos">+1pt</td></tr>
         <tr><td>1列ビンゴ</td><td className="pos">+3pt</td></tr>
-        <tr><td>乗り換え1回</td><td className="neg">-3pt</td></tr>
-        <tr><td>ゴール条件未達成</td><td className="neg">-5pt</td></tr>
-      </tbody></table></div>
+      </tbody></table>:<>
+        <div style={{fontSize:12,fontWeight:700,color:'var(--gold)',marginBottom:6}}>
+          (駅ビンゴ列数+1) × (ミッション列数+1)
+        </div>
+        <table className="stb"><tbody>
+          <tr><td>駅2列・ミッション2列</td><td className="pos">3×3=9pt</td></tr>
+          <tr><td>駅3列・ミッション0列</td><td style={{color:'var(--muted)'}}>4×1=4pt</td></tr>
+          <tr><td>駅3列・ミッション3列</td><td className="pos">4×4=16pt</td></tr>
+        </tbody></table>
+        <div style={{fontSize:10,color:'var(--muted)',marginTop:6}}>※両方バランスよく取るほど高得点！</div>
+      </>}
+    </div>
+    <div className="rc"><div className="rct"><span>🎲</span>駅難易度</div>
+      <table className="stb"><tbody>
+        <tr><td><span style={{color:'var(--diff3)',fontWeight:700}}>難</span> 1路線のみ</td><td style={{color:'var(--diff3)'}}>四隅に配置</td></tr>
+        <tr><td><span style={{color:'var(--diff2)',fontWeight:700}}>普</span> 2路線</td><td style={{color:'var(--diff2)'}}>通常マス</td></tr>
+        <tr><td><span style={{color:'var(--diff1)',fontWeight:700}}>易</span> 3路線以上</td><td style={{color:'var(--diff1)'}}>通常マス</td></tr>
+      </tbody></table>
+      <div style={{fontSize:10,color:'var(--muted)',marginTop:6}}>★マーク=固定駅（月島・平和台・西葛西・王子から2駅）</div>
+    </div>
     <div className="rc"><div className="rct"><span>🚇</span>移動ルール</div>
-      <div className="rcb">東京メトロ全線＋都営地下鉄が対象。徒歩・バスは自由。駅停車は写真証拠（駅名看板必須）で記録。同一駅の連続記録はNG。</div></div>
-    <div className="rc"><div className="rct"><span>⚔️</span>午前対決イベント</div>
-      <div className="rcb">10:00〜13:00に最大収容人数のライブ会場を発見。13:00に合流して発表。勝利チームに駅名ビンゴ任意1マスを付与。</div></div>
-    <div className="rc"><div className="rct"><span>🎯</span>ミッション判定</div>
-      <div className="rcb">写真を撮ってアプリから申請 → 運営が確認して承認。同一対象の重複カウント禁止。オンライン画像転用NG。</div></div>
+      <div className="rcb">{routeMode==='metro'?'東京メトロ全線が対象。':'東京メトロ全線＋都営地下鉄が対象。'}徒歩・バスは自由。駅停車は写真証拠（駅名看板必須）で記録。</div></div>
   </div>;
 }
 
-// ── ADMIN PAGE ──
 function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,gameCode}){
-  const[adminTab,setAdminTab]=useState('approval');
-  const[newEv,setNewEv]=useState({name:'',desc:'',type:'manual',scheduledTime:'',reward:''});
+  const [adminTab,setAdminTab]=useState('approval');
+  const [newEv,setNewEv]=useState({name:'',desc:'',type:'manual',scheduledTime:'',reward:''});
+  const config=gameState.config;
   const pendingCount=(gameState.pendingApprovals||[]).length;
   return<div>
     <div style={{background:'rgba(230,0,18,.1)',border:'1px solid var(--red)',borderRadius:8,padding:'8px 12px',marginBottom:12,fontSize:11}}>
       <span style={{fontWeight:700,color:'var(--red)'}}>🔒 運営モード</span>　コード：<span style={{fontFamily:'Bebas Neue',fontSize:15,color:'var(--yellow)',letterSpacing:2}}>{gameCode}</span>
+      <span style={{marginLeft:8,background:'var(--card2)',padding:'2px 8px',borderRadius:6,fontSize:10}}>
+        {config?.mode==='double'?'ダブルビンゴ':'ベーシック'} / {config?.routeMode==='full'?'メトロ＋都営':'メトロのみ'}
+      </span>
     </div>
     <div className="admin-tabs">
       <button className={`admin-tab ${adminTab==='approval'?'on':''}`} onClick={()=>setAdminTab('approval')}>
@@ -707,25 +926,24 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,gameCode
       <button className={`admin-tab ${adminTab==='scores'?'on':''}`} onClick={()=>setAdminTab('scores')}>スコア</button>
     </div>
     {adminTab==='approval'&&<>
-      {pendingCount===0?<div className="empty">承認待ちはありません</div>:
-        (gameState.pendingApprovals||[]).map((appr,i)=>{
-          const team=(gameState.teams||[]).find(t=>t.id===appr.teamId);
-          const mission=MISSIONS.find(m=>m.id===appr.missionId);
-          return<div key={i} className="approval-item">
-            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-              <div className="dot" style={{background:team?.color||'#888',width:10,height:10}}></div>
-              <div style={{fontWeight:700,fontSize:11}}>{team?.name||'不明'}</div>
-              <div style={{fontSize:10,color:'var(--muted)',marginLeft:'auto'}}>{appr.time}</div>
-            </div>
-            <div style={{fontSize:12,fontWeight:700,marginBottom:6}}>{mission?.icon} {mission?.text}</div>
-            {appr.photo&&<img src={appr.photo} style={{width:'100%',maxHeight:180,objectFit:'cover',borderRadius:8,marginBottom:6}} alt=""/>}
-            {appr.note&&<div style={{fontSize:11,color:'var(--muted)',marginBottom:6}}>メモ：{appr.note}</div>}
-            <div className="appr-btns">
-              <button className="appr-btn appr-ok" onClick={()=>onApprove(appr)}>✓ 承認</button>
-              <button className="appr-btn appr-ng" onClick={()=>onReject(appr)}>✗ 却下</button>
-            </div>
-          </div>;
-        })}
+      {pendingCount===0?<div className="empty">承認待ちはありません</div>:(gameState.pendingApprovals||[]).map((appr,i)=>{
+        const team=(gameState.teams||[]).find(t=>t.id===appr.teamId);
+        const mission=MISSIONS.find(m=>m.id===appr.missionId);
+        return<div key={i} className="approval-item">
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+            <div className="dot" style={{background:team?.color||'#888',width:10,height:10}}></div>
+            <div style={{fontWeight:700,fontSize:11}}>{team?.name||'不明'}</div>
+            <div style={{fontSize:10,color:'var(--muted)',marginLeft:'auto'}}>{appr.time}</div>
+          </div>
+          <div style={{fontSize:12,fontWeight:700,marginBottom:6}}>{mission?.icon} {mission?.text}</div>
+          {appr.photo&&<img src={appr.photo} style={{width:'100%',maxHeight:180,objectFit:'cover',borderRadius:8,marginBottom:6}} alt=""/>}
+          {appr.note&&<div style={{fontSize:11,color:'var(--muted)',marginBottom:6}}>メモ：{appr.note}</div>}
+          <div className="appr-btns">
+            <button className="appr-btn appr-ok" onClick={()=>onApprove(appr)}>✓ 承認</button>
+            <button className="appr-btn appr-ng" onClick={()=>onReject(appr)}>✗ 却下</button>
+          </div>
+        </div>;
+      })}
     </>}
     {adminTab==='events'&&<>
       {(gameState.events||[]).map(ev=>(
@@ -745,7 +963,7 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,gameCode
           {ev.status==='active'&&<button onClick={()=>onFireEvent(ev.id,'end')} style={{background:'var(--card)',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:6,padding:'5px 9px',fontSize:10,fontWeight:700,cursor:'pointer',fontFamily:'Noto Sans JP,sans-serif'}}>終了</button>}
         </div>
       ))}
-      <p className="sec">新しいイベントを追加</p>
+      <p className="sec">イベントを追加</p>
       <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:12}}>
         <input className="sinp" placeholder="イベント名" value={newEv.name} onChange={e=>setNewEv({...newEv,name:e.target.value})}/>
         <input className="sinp" placeholder="説明" value={newEv.desc} onChange={e=>setNewEv({...newEv,desc:e.target.value})}/>
@@ -759,15 +977,15 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,gameCode
       </div>
     </>}
     {adminTab==='scores'&&(gameState.teams||[]).map(t=>{
-      const sc=calcScore(t);
+      const sc=calcScore(t,config);
       return<div key={t.id} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:8}}>
         <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:6}}>
           <div className="dot" style={{background:t.color,width:10,height:10}}></div>
           <div style={{fontWeight:700,fontSize:14}}>{t.name}</div>
           <div style={{marginLeft:'auto',fontFamily:'Bebas Neue',fontSize:22,color:'var(--gold)'}}>{sc.total}pt</div>
         </div>
-        <div style={{fontSize:10,color:'var(--muted)',display:'flex',gap:10,flexWrap:'wrap'}}>
-          <span>マス {sc.masks}</span><span>BINGO {sc.bingos}</span><span>乗換 {sc.transfers}回</span>
+        <div style={{fontSize:10,color:'var(--muted)'}}>
+          {config?.mode==='double'?`式：(${sc.stationBingo}+1)×(${sc.missionBingo}+1)=${sc.total}`:`マス${sc.masks} BINGO${sc.stationBingo}列 合計${sc.total}pt`}
         </div>
       </div>;
     })}
@@ -776,32 +994,60 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,gameCode
 
 // ── SETUP MODAL ──
 function SetupModal({onCreate,onJoin}){
-  const[mode,setMode]=useState('select');
-  const[teamName,setTeamName]=useState('');
-  const[color,setColor]=useState(TEAM_COLORS[0]);
-  const[code,setCode]=useState('');
-  const[err,setErr]=useState('');
-  const[loading,setLoading]=useState(false);
+  const [mode,setMode]=useState('select');
+  const [teamName,setTeamName]=useState('');
+  const [color,setColor]=useState(TEAM_COLORS[0]);
+  const [code,setCode]=useState('');
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [gameMode,setGameMode]=useState('double');
+  const [routeMode,setRouteMode]=useState('metro');
+
   return<div className="center-overlay">
     <div className="modal">
       {mode==='select'&&<>
         <div className="modal-title">🚇 東京メトロラン</div>
-        <div style={{fontSize:11,color:'var(--muted)',textAlign:'center',marginBottom:16}}>第4回　ダブルビンゴ版</div>
+        <div style={{fontSize:11,color:'var(--muted)',textAlign:'center',marginBottom:16}}>v5 — 難易度配置・掛け算スコア対応</div>
         <button className="btn pri" onClick={()=>setMode('create')}>新しいゲームを作る</button>
         <button className="btn sec" onClick={()=>setMode('join')}>コードで参加する</button>
         <button className="btn sec" style={{fontSize:11,color:'var(--muted)',marginTop:4}} onClick={()=>setMode('admin')}>🔒 運営として入る</button>
       </>}
+
       {mode==='create'&&<>
         <div className="modal-title">新規ゲーム作成</div>
+        <p className="sec">ゲームモード</p>
+        <div className="mode-cards">
+          <div className={`mode-card ${gameMode==='basic'?'sel basic':''}`} onClick={()=>setGameMode('basic')}>
+            <div className="mode-card-title">🎰 ベーシック {gameMode==='basic'&&<span style={{marginLeft:'auto',fontSize:10,color:'var(--cyan)'}}>✓ 選択中</span>}</div>
+            <div className="mode-card-desc">駅ビンゴのみ。スコア＝マス数 ＋ ビンゴ列数×3</div>
+          </div>
+          <div className={`mode-card ${gameMode==='double'?'sel double':''}`} onClick={()=>setGameMode('double')}>
+            <div className="mode-card-title">🎯 ダブルビンゴ {gameMode==='double'&&<span style={{marginLeft:'auto',fontSize:10,color:'var(--purple)'}}>✓ 選択中</span>}</div>
+            <div className="mode-card-desc">駅ビンゴ＋ミッションビンゴ。スコア＝(駅列+1)×(ミッション列+1)</div>
+          </div>
+        </div>
+        <p className="sec">路線範囲</p>
+        <div className="route-cards">
+          <div className={`route-card ${routeMode==='metro'?'sel':''}`} onClick={()=>setRouteMode('metro')}>
+            <div className="route-card-title">🚇 メトロのみ</div>
+            <div className="route-card-desc">東京メトロ9路線</div>
+          </div>
+          <div className={`route-card ${routeMode==='full'?'sel':''}`} onClick={()=>setRouteMode('full')}>
+            <div className="route-card-title">🚇 メトロ＋都営</div>
+            <div className="route-card-desc">メトロ＋都営4路線</div>
+          </div>
+        </div>
+        <p className="sec">チーム名・カラー</p>
         <input className="modal-input left" placeholder="チーム名を入力..." value={teamName} onChange={e=>setTeamName(e.target.value)}/>
-        <div style={{fontSize:11,color:'var(--muted)',marginBottom:8}}>チームカラー</div>
         <div className="color-row">{TEAM_COLORS.map(c=><div key={c} className={`cswatch ${color===c?'sel':''}`} style={{background:c}} onClick={()=>setColor(c)}></div>)}</div>
         {err&&<div style={{fontSize:11,color:'var(--red)',marginBottom:8}}>{err}</div>}
-        <button className="btn pri" disabled={loading} onClick={async()=>{if(!teamName.trim()){setErr('チーム名を入力してください');return}setLoading(true);await onCreate(teamName.trim(),color);setLoading(false);}}>
-          {loading?'作成中...':'ゲームを作成する'}
-        </button>
+        <button className="btn pri" disabled={loading} onClick={async()=>{
+          if(!teamName.trim()){setErr('チーム名を入力してください');return}
+          setLoading(true);await onCreate(teamName.trim(),color,{mode:gameMode,routeMode});setLoading(false);
+        }}>{loading?'作成中...':'ゲームを作成する'}</button>
         <button className="btn sec" onClick={()=>{setMode('select');setErr('')}}>戻る</button>
       </>}
+
       {mode==='join'&&<>
         <div className="modal-title">ゲームに参加</div>
         <div style={{fontSize:11,color:'var(--muted)',marginBottom:5}}>ゲームコード（6桁）</div>
@@ -813,13 +1059,13 @@ function SetupModal({onCreate,onJoin}){
         <button className="btn pri" disabled={loading} onClick={async()=>{
           if(!code.trim()||!teamName.trim()){setErr('コードとチーム名を入力してください');return}
           setLoading(true);const ok=await onJoin(code.trim().toUpperCase(),teamName.trim(),color);
-          setLoading(false);if(!ok)setErr('ゲームが見つかりません。コードを確認してください');
+          setLoading(false);if(!ok)setErr('ゲームが見つかりません');
         }}>{loading?'参加中...':'参加する'}</button>
         <button className="btn sec" onClick={()=>{setMode('select');setErr('')}}>戻る</button>
       </>}
+
       {mode==='admin'&&<>
         <div className="modal-title">🔒 運営モード</div>
-        <div style={{fontSize:11,color:'var(--muted)',marginBottom:8}}>管理するゲームのコードを入力</div>
         <input className="modal-input" placeholder="XXXXXX" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} maxLength={6}/>
         {err&&<div style={{fontSize:11,color:'var(--red)',marginBottom:8}}>{err}</div>}
         <button className="btn red" disabled={loading} onClick={async()=>{
@@ -832,19 +1078,21 @@ function SetupModal({onCreate,onJoin}){
   </div>;
 }
 
-// ── SHARE MODAL ──
-function ShareModal({gameCode,onClose}){
-  const[copied,setCopied]=useState(false);
+function ShareModal({gameCode,config,onClose}){
+  const [copied,setCopied]=useState(false);
   const copy=()=>{if(navigator.clipboard)navigator.clipboard.writeText(gameCode).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
   return<div className="center-overlay" onClick={onClose}>
     <div className="modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-title">チームを招待する</div>
-      <div className="code-display"><div className="code-big">{gameCode}</div>
-        <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>このコードを仲間に共有してください</div></div>
-      <div style={{fontSize:11,color:'var(--muted)',textAlign:'center',marginBottom:10,lineHeight:1.7}}>
-        仲間は「コードで参加」からこのコードを入力<br/>
-        <span style={{color:'var(--yellow)'}}>別端末からリアルタイム同期されます 🔥</span>
+      <div className="code-display">
+        <div className="code-big">{gameCode}</div>
+        <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>このコードを仲間に共有</div>
+        <div style={{marginTop:6,display:'flex',gap:6,justifyContent:'center'}}>
+          <span style={{background:'var(--card)',padding:'3px 8px',borderRadius:6,fontSize:10}}>{config?.mode==='double'?'ダブルビンゴ':'ベーシック'}</span>
+          <span style={{background:'var(--card)',padding:'3px 8px',borderRadius:6,fontSize:10}}>{config?.routeMode==='full'?'メトロ＋都営':'メトロのみ'}</span>
+        </div>
       </div>
+      <div style={{fontSize:11,color:'var(--yellow)',textAlign:'center',marginBottom:10}}>別端末からリアルタイム同期されます 🔥</div>
       <button className="btn pri" onClick={copy}>{copied?'✓ コピーしました！':'コードをコピー'}</button>
       <button className="btn sec" onClick={onClose}>閉じる</button>
     </div>
@@ -853,18 +1101,16 @@ function ShareModal({gameCode,onClose}){
 
 // ── MAIN APP ──
 function App(){
-  const[gameState,setGameState]=useState(null);
-  const[myTeamId,setMyTeamId]=useState(null);
-  const[isAdmin,setIsAdmin]=useState(false);
-  const[tab,setTab]=useState('bingo');
-  const[toasts,setToasts]=useState([]);
-  const[showShare,setShowShare]=useState(false);
-  const[nowTs,setNowTs]=useState(Date.now());
-  const[fbReady,setFbReady]=useState(false);
+  const [gameState,setGameState]=useState(null);
+  const [myTeamId,setMyTeamId]=useState(null);
+  const [isAdmin,setIsAdmin]=useState(false);
+  const [tab,setTab]=useState('bingo');
+  const [toasts,setToasts]=useState([]);
+  const [showShare,setShowShare]=useState(false);
+  const [nowTs,setNowTs]=useState(Date.now());
   const unsubRef=useRef(null);
 
   useEffect(()=>{
-    setFbReady(true);
     const interval=setInterval(()=>setNowTs(Date.now()),1000);
     return()=>clearInterval(interval);
   },[]);
@@ -875,12 +1121,10 @@ function App(){
     setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==id)),3500);
   },[]);
 
-  const subscribeGame=useCallback((code)=>{
+  const subGame=useCallback((code)=>{
     if(unsubRef.current)unsubRef.current();
-    unsubRef.current=fbSubscribe(code,(newState)=>{
+    unsubRef.current=fbSub(code,newState=>{
       setGameState(prev=>{
-        // イベント発動チェック
-        const t=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
         const hasNewActive=(newState.events||[]).find(e=>e.status==='active'&&!(prev?.events||[]).find(pe=>pe.id===e.id&&pe.status==='active'));
         if(hasNewActive)showToast({type:'ev',emoji:'⚡',title:'イベント発動！',sub:hasNewActive.name});
         return newState;
@@ -888,32 +1132,35 @@ function App(){
     });
   },[showToast]);
 
-  const handleCreate=useCallback(async(teamName,teamColor)=>{
-    const gs=initGameState(teamName,teamColor);
+  const handleCreate=useCallback(async(teamName,teamColor,modeConfig)=>{
+    const gs=initGameState(teamName,teamColor,modeConfig);
     await fbSave(gs.gameCode,gs);
     setGameState(gs);setMyTeamId('t1');setTab('bingo');
-    subscribeGame(gs.gameCode);
+    subGame(gs.gameCode);
     setTimeout(()=>setShowShare(true),300);
-  },[subscribeGame]);
+  },[subGame]);
 
   const handleJoin=useCallback(async(code,teamName,teamColor,asAdmin=false)=>{
     const gs=await fbLoad(code);
     if(!gs)return false;
-    if(asAdmin){setGameState(gs);setIsAdmin(true);setTab('admin');subscribeGame(code);return true;}
+    if(asAdmin){setGameState(gs);setIsAdmin(true);setTab('admin');subGame(code);return true;}
     const newId='t'+Date.now();
-    const newTeam={id:newId,name:teamName,color:teamColor,
-      stationCard:genCard(STATIONS),missionCard:genMissionCard(),
-      stationReached:['FREE'],missionReached:['FREE'],missionSubmissions:{},
-      transferCount:0,currentStation:null,goalPenalty:0,
-      logs:[{type:'st',title:'ゲーム参加！',sub:`チーム「${teamName}」で参加`,time:nowTime()}]};
+    const cfg=gs.config||{mode:'basic',routeMode:'metro'};
+    const newTeam={
+      id:newId,name:teamName,color:teamColor,
+      stationCard:genStationCard(cfg.routeMode),
+      missionCard:cfg.mode==='double'?genMissionCard():null,
+      stationReached:['FREE'],missionReached:['FREE'],
+      missionSubmissions:{},goalPenalty:0,
+      logs:[{type:'st',title:'ゲーム参加！',sub:`チーム「${teamName}」で参加`,time:nowTime()}]
+    };
     const updated={...gs,teams:[...gs.teams,newTeam]};
     await fbSave(code,updated);
-    setGameState(updated);setMyTeamId(newId);setTab('bingo');
-    subscribeGame(code);
+    setGameState(updated);setMyTeamId(newId);setTab('bingo');subGame(code);
     return true;
-  },[subscribeGame]);
+  },[subGame]);
 
-  const saveAndUpdate=useCallback(async(newGs)=>{
+  const save=useCallback(async(newGs)=>{
     await fbSave(newGs.gameCode,newGs);
     setGameState(newGs);
   },[]);
@@ -928,43 +1175,30 @@ function App(){
     const reachedSet=new Set(newReached);
     const isOnCard=(myTeam.stationCard||[]).some(c=>c.id===station.id);
     const t=nowTime();
-    const log={type:'s',title:`${station.name}に到着`,sub:isOnCard?'ビンゴカードの駅！ +1pt':'+1pt',time:t,photo:photoPreview||null};
+    const log={type:'s',title:`${station.name}に到着`,sub:isOnCard?'ビンゴカードの駅！':'+1pt',time:t,photo:photoPreview||null};
     const prevBingo=checkBingo(myTeam.stationCard,new Set(myTeam.stationReached||[]));
     const newBingo=checkBingo(myTeam.stationCard,reachedSet);
     let newLogs=[...(myTeam.logs||[]),log];
-    showToast({type:'ok',emoji:'📍',title:`${station.name}に到着！`,sub:isOnCard?'+1pt（ビンゴカードの駅）':'+1pt'});
+    showToast({type:'ok',emoji:'📍',title:`${station.name}に到着！`,sub:isOnCard?'ビンゴカードの駅！':''});
     if(newBingo.length>prevBingo.length){
       const diff=newBingo.length-prevBingo.length;
-      setTimeout(()=>showToast({type:'bingo',emoji:'🎯',title:`BINGO! ${diff}列達成！`,sub:`+${diff*3}pt`}),500);
-      newLogs=[...newLogs,{type:'bingo',title:`BINGO達成！ ${diff}列`,sub:`+${diff*3}pt`,time:t}];
+      setTimeout(()=>showToast({type:'bingo',emoji:'🎯',title:`BINGO! ${diff}列達成！`,sub:'スコアが上がりました！'}),500);
+      newLogs=[...newLogs,{type:'bingo',title:`駅ビンゴ達成！ ${diff}列`,sub:'スコア更新',time:t}];
     }
     const updated=gameState.teams.map(t2=>t2.id===myTeamId?{...t2,stationReached:newReached,logs:newLogs,currentStation:station.id}:t2);
-    await saveAndUpdate({...gameState,teams:updated});
-    setTab('bingo');
-  },[myTeamId,gameState,showToast,saveAndUpdate]);
-
-  const handleTransfer=useCallback(async()=>{
-    if(!myTeamId||!gameState)return;
-    const updated=gameState.teams.map(t=>{
-      if(t.id!==myTeamId)return t;
-      const tc=(t.transferCount||0)+1;
-      return{...t,transferCount:tc,logs:[...(t.logs||[]),{type:'pen',title:'乗り換え記録',sub:`-3pt（累計${tc}回・計${tc*-3}pt）`,time:nowTime()}]};
-    });
-    await saveAndUpdate({...gameState,teams:updated});
-    showToast({type:'warn',emoji:'🔄',title:'乗り換え記録',sub:'-3pt'});
-  },[myTeamId,gameState,showToast,saveAndUpdate]);
+    await save({...gameState,teams:updated});setTab('bingo');
+  },[myTeamId,gameState,showToast,save]);
 
   const handleMissionSubmit=useCallback(async(missionId,photo,note)=>{
     if(!myTeamId||!gameState)return;
     const appr={id:'a'+Date.now(),teamId:myTeamId,missionId,photo,note,time:nowTime()};
     const updatedTeams=gameState.teams.map(t=>{
       if(t.id!==myTeamId)return t;
-      const subs={...(t.missionSubmissions||{}),[missionId]:'pending'};
-      return{...t,missionSubmissions:subs};
+      return{...t,missionSubmissions:{...(t.missionSubmissions||{}),[missionId]:'pending'}};
     });
-    await saveAndUpdate({...gameState,teams:updatedTeams,pendingApprovals:[...(gameState.pendingApprovals||[]),appr]});
+    await save({...gameState,teams:updatedTeams,pendingApprovals:[...(gameState.pendingApprovals||[]),appr]});
     showToast({type:'ms',emoji:'📤',title:'申請しました！',sub:'運営の承認をお待ちください'});
-  },[myTeamId,gameState,showToast,saveAndUpdate]);
+  },[myTeamId,gameState,showToast,save]);
 
   const handleApprove=useCallback(async(appr)=>{
     const updatedTeams=gameState.teams.map(t=>{
@@ -976,14 +1210,14 @@ function App(){
       let newLogs=[...(t.logs||[]),{type:'ms',title:'ミッション承認！',sub:MISSIONS.find(m=>m.id===appr.missionId)?.text||'',time:nowTime()}];
       if(newBingo.length>prevBingo.length){
         const diff=newBingo.length-prevBingo.length;
-        newLogs=[...newLogs,{type:'bingo',title:`ミッションBINGO！ ${diff}列`,sub:`+${diff*3}pt`,time:nowTime()}];
+        newLogs=[...newLogs,{type:'bingo',title:`ミッションBINGO！ ${diff}列`,sub:'スコア更新',time:nowTime()}];
       }
       return{...t,missionSubmissions:subs,missionReached:newReached,logs:newLogs};
     });
     const newPending=(gameState.pendingApprovals||[]).filter(a=>a.id!==appr.id);
-    await saveAndUpdate({...gameState,teams:updatedTeams,pendingApprovals:newPending});
+    await save({...gameState,teams:updatedTeams,pendingApprovals:newPending});
     showToast({type:'ok',emoji:'✅',title:'承認しました',sub:''});
-  },[gameState,showToast,saveAndUpdate]);
+  },[gameState,showToast,save]);
 
   const handleReject=useCallback(async(appr)=>{
     const updatedTeams=gameState.teams.map(t=>{
@@ -991,27 +1225,25 @@ function App(){
       return{...t,missionSubmissions:{...(t.missionSubmissions||{}),[appr.missionId]:'rejected'}};
     });
     const newPending=(gameState.pendingApprovals||[]).filter(a=>a.id!==appr.id);
-    await saveAndUpdate({...gameState,teams:updatedTeams,pendingApprovals:newPending});
+    await save({...gameState,teams:updatedTeams,pendingApprovals:newPending});
     showToast({type:'warn',emoji:'✗',title:'却下しました',sub:''});
-  },[gameState,showToast,saveAndUpdate]);
+  },[gameState,showToast,save]);
 
   const handleFireEvent=useCallback(async(evId,action='start')=>{
     const events=(gameState.events||[]).map(ev=>{
       if(ev.id!==evId)return ev;
       return action==='end'?{...ev,status:'done'}:{...ev,status:'active',triggeredAt:Date.now()};
     });
-    if(action==='start'){
-      const ev=(gameState.events||[]).find(e=>e.id===evId);
-      if(ev)showToast({type:'ev',emoji:'⚡',title:'イベント発動！',sub:ev.name});
-    }
-    await saveAndUpdate({...gameState,events});
-  },[gameState,showToast,saveAndUpdate]);
+    if(action==='start'){const ev=(gameState.events||[]).find(e=>e.id===evId);if(ev)showToast({type:'ev',emoji:'⚡',title:'イベント発動！',sub:ev.name});}
+    await save({...gameState,events});
+  },[gameState,showToast,save]);
 
   const handleAddEvent=useCallback(async(ev)=>{
-    await saveAndUpdate({...gameState,events:[...(gameState.events||[]),ev]});
-  },[gameState,saveAndUpdate]);
+    await save({...gameState,events:[...(gameState.events||[]),ev]});
+  },[gameState,save]);
 
-  // Timer
+  const config=gameState?.config;
+  const mode=config?.mode||'basic';
   const remaining=gameState?Math.max(0,gameState.gameDuration-(nowTs-gameState.startedAt)):0;
   const rH=Math.floor(remaining/3600000);
   const rM=Math.floor((remaining%3600000)/60000);
@@ -1019,27 +1251,16 @@ function App(){
   const timerStr=`${rH}:${String(rM).padStart(2,'0')}:${String(rS).padStart(2,'0')}`;
   const isEnding=remaining<30*60*1000;
   const myTeam=gameState?.teams.find(t=>t.id===myTeamId);
-  const score=myTeam?calcScore(myTeam):{total:0,masks:0,bingos:0,transfers:0};
+  const score=myTeam?calcScore(myTeam,config):{total:0,stationBingo:0,missionBingo:0,masks:0};
   const activeEvents=(gameState?.events||[]).filter(e=>e.status==='active');
   const pendingCount=(gameState?.pendingApprovals||[]).length;
   const phase=gameState?getPhase(gameState.startedAt):'am';
   const phaseLabel=phase==='am'?'午前フェーズ':phase==='lunch'?'昼休憩・対決':'午後フェーズ';
   const phaseCls=phase==='am'?'phase-am':phase==='lunch'?'phase-lunch':'phase-pm';
-  const playerTabs=[
-    {id:'bingo',icon:'🎰',label:'ビンゴ'},
-    {id:'arrival',icon:'📍',label:'到着'},
-    {id:'mission',icon:'🎯',label:'ミッション'},
-    {id:'goal',icon:'🏁',label:'ゴール'},
-    {id:'score',icon:'🏆',label:'スコア'},
-    {id:'rules',icon:'📖',label:'ルール'},
-  ];
 
-  if(!fbReady){
-    return<div className="loading">
-      <div className="spinner"></div>
-      <div style={{fontSize:13,color:'var(--muted)'}}>Firebase接続中...</div>
-    </div>;
-  }
+  const playerTabs=mode==='double'
+    ?[{id:'bingo',icon:'🎰',label:'ビンゴ'},{id:'arrival',icon:'📍',label:'到着'},{id:'mission',icon:'🎯',label:'ミッション'},{id:'score',icon:'🏆',label:'スコア'},{id:'rules',icon:'📖',label:'ルール'}]
+    :[{id:'bingo',icon:'🎰',label:'ビンゴ'},{id:'arrival',icon:'📍',label:'到着'},{id:'score',icon:'🏆',label:'スコア'},{id:'rules',icon:'📖',label:'ルール'}];
 
   if(!gameState||(!myTeamId&&!isAdmin)){
     return<><Toast toasts={toasts}/><SetupModal onCreate={handleCreate} onJoin={handleJoin}/></>;
@@ -1047,7 +1268,7 @@ function App(){
 
   return<div className="wrap">
     <Toast toasts={toasts}/>
-    {showShare&&<ShareModal gameCode={gameState.gameCode} onClose={()=>setShowShare(false)}/>}
+    {showShare&&<ShareModal gameCode={gameState.gameCode} config={config} onClose={()=>setShowShare(false)}/>}
     <div className="hdr">
       <div style={{display:'flex',flexDirection:'column',gap:3}}>
         <div className="logo">METRO RUN</div>
@@ -1067,12 +1288,17 @@ function App(){
         </div>}
       </div>
     </div>
+
     {!isAdmin&&<div className="sbar">
       <div className="si"><div className="sl">SCORE</div><div className="sv">{score.total}</div></div>
-      <div className="si"><div className="sl">BINGO</div><div className="sv b">{score.bingos}</div></div>
-      <div className="si"><div className="sl">マス</div><div className="sv g">{score.masks}</div></div>
-      <div className="si"><div className="sl">乗換</div><div className="sv r">{score.transfers}</div></div>
+      {mode==='double'
+        ?<><div className="si"><div className="sl">駅BINGO</div><div className="sv b">{score.stationBingo}</div></div>
+          <div className="si"><div className="sl">ミッション</div><div className="sv" style={{color:'var(--purple)'}}>{score.missionBingo}</div></div></>
+        :<><div className="si"><div className="sl">BINGO</div><div className="sv b">{score.stationBingo}</div></div>
+          <div className="si"><div className="sl">マス</div><div className="sv g">{score.masks}</div></div></>
+      }
     </div>}
+
     {!isAdmin&&activeEvents.map(ev=>(
       <div key={ev.id} className="evbanner active">
         <span style={{fontSize:20}}>🚨</span>
@@ -1083,6 +1309,7 @@ function App(){
         </div>
       </div>
     ))}
+
     <div className="nav">
       {(isAdmin?[{id:'admin',icon:'🔒',label:'運営'}]:playerTabs).map(t=>(
         <button key={t.id} className={`nt ${tab===t.id?'on':''}`} onClick={()=>setTab(t.id)}>
@@ -1091,13 +1318,13 @@ function App(){
         </button>
       ))}
     </div>
+
     <div className="cnt">
-      {tab==='bingo'&&myTeam&&<BingoPage team={myTeam}/>}
-      {tab==='arrival'&&myTeam&&<ArrivalPage team={myTeam} onArrive={handleArrive} onTransfer={handleTransfer}/>}
-      {tab==='mission'&&myTeam&&<MissionPage team={myTeam} onSubmitMission={handleMissionSubmit}/>}
-      {tab==='goal'&&myTeam&&<GoalPage team={myTeam}/>}
+      {tab==='bingo'&&myTeam&&<BingoPage team={myTeam} config={config}/>}
+      {tab==='arrival'&&myTeam&&<ArrivalPage team={myTeam} config={config} onArrive={handleArrive}/>}
+      {tab==='mission'&&myTeam&&mode==='double'&&<MissionPage team={myTeam} onSubmitMission={handleMissionSubmit}/>}
       {tab==='score'&&<ScorePage gameState={gameState} myTeamId={myTeamId}/>}
-      {tab==='rules'&&<RulesPage/>}
+      {tab==='rules'&&<RulesPage config={config}/>}
       {tab==='admin'&&<AdminPage gameState={gameState} onFireEvent={handleFireEvent} onAddEvent={handleAddEvent} onApprove={handleApprove} onReject={handleReject} gameCode={gameState.gameCode}/>}
     </div>
   </div>;
