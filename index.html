@@ -647,11 +647,9 @@ function calcScore(team,config){
   const msBingo=checkBingo(team.missionCard,msR);
   const stMasks=(team.stationReached||[]).filter(id=>id!=='FREE').length;
   const msMasks=(team.missionReached||[]).filter(id=>id!=='FREE').length;
-  const mode=config?.mode||'basic';
   const gp=(team.goalPenalty||0)+(team.manualScoreDelta||0);
-  if(mode==='basic'){return{stB:stBingo.length,msB:0,masks:stMasks,total:stMasks+stBingo.length*3+gp}}
-  const total=(stBingo.length+1)*(msBingo.length+1)+gp;
-  return{stB:stBingo.length,msB:msBingo.length,masks:stMasks+msMasks,total};
+  const total=stMasks+msMasks+(stBingo.length+msBingo.length)*3+gp;
+  return{stB:stBingo.length,msB:msBingo.length,masks:stMasks+msMasks,stMasks,msMasks,total};
 }
 function genCode(){return Math.random().toString(36).substr(2,6).toUpperCase()}
 function nowTime(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
@@ -941,8 +939,8 @@ function RuleScreen({gameState,onClose,requireConfirm=false}){
           駅ビンゴに加えて、ミッションビンゴも同時進行します。<br/>
           ミッションを達成したら写真を撮って申請。<br/>
           運営が承認するとマスが埋まります。<br/><br/>
-          <span style={{color:'var(--yellow)',fontWeight:700}}>スコア＝（駅ビンゴ列数＋1）×（ミッション列数＋1）</span><br/>
-          両方バランスよく進めると高得点になります！
+          <span style={{color:'var(--yellow)',fontWeight:700}}>1マス埋めるごとに +1pt / ビンゴ成立で +3pt</span><br/>
+          駅とミッションの両方を積み上げるほど高得点になります。
         </div>
       </div>}
       {mode==='basic'&&<div className="rule-card">
@@ -1047,25 +1045,20 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
     </div>}
 
     <div style={{marginTop:12}}>
-      {mode==='double'?
-        <div className="multiply-display">
-          <div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>{isMyTeam?'現在のスコア':'観戦中チームの状況'}</div>
-          <div className="multiply-formula">{isMyTeam?`(${viewScore.stB}+1) × (${viewScore.msB}+1) = ${viewScore.total}`:'BINGO / LOG'}</div>
-          <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>
-            {isMyTeam?'両方バランスよく取るほど高得点！':`${viewTeam?.name} のビンゴ盤面とログを表示中`}
-          </div>
-          {isMyTeam&&<div style={{fontSize:10,color:'var(--muted)',marginTop:6}}>
-            駅到着 {stationProgress} / ミッション達成 {missionProgress}
-          </div>}
-        </div>:
-        <div className="score-detail">
-          {isMyTeam||showOpponentDetails?<><div className="score-row"><span className="lbl">マス数</span><span className="val">{viewScore.masks}pt</span></div>
-          <div className="score-row"><span className="lbl">ビンゴ（{viewScore.stB}列×3pt）</span><span className="val">{viewScore.stB*3}pt</span></div>
-          <div className="score-row"><span>合計</span><span className="val" style={{fontSize:20}}>{viewScore.total}pt</span></div></>
-          :<div style={{fontSize:11,color:'var(--muted)',textAlign:'center'}}>相手チームの数値スコアは非表示です</div>}
-        </div>}
+      <div className="score-detail">
+        {isMyTeam||showOpponentDetails?<><div className="score-row"><span className="lbl">マス数</span><span className="val">{viewScore.masks}pt</span></div>
+        {mode==='double'
+          ?<>
+            <div className="score-row"><span className="lbl">駅到着</span><span className="val">{viewScore.stMasks}pt</span></div>
+            <div className="score-row"><span className="lbl">ミッション達成</span><span className="val">{viewScore.msMasks}pt</span></div>
+            <div className="score-row"><span className="lbl">ビンゴ（{viewScore.stB+viewScore.msB}列×3pt）</span><span className="val">{(viewScore.stB+viewScore.msB)*3}pt</span></div>
+          </>
+          :<div className="score-row"><span className="lbl">ビンゴ（{viewScore.stB}列×3pt）</span><span className="val">{viewScore.stB*3}pt</span></div>}
+        <div className="score-row"><span>合計</span><span className="val" style={{fontSize:20}}>{viewScore.total}pt</span></div></>
+        :<div style={{fontSize:11,color:'var(--muted)',textAlign:'center'}}>相手チームの数値スコアは非表示です</div>}
+      </div>
       {!isMyTeam&&mode==='double'&&showOpponentDetails&&<div style={{fontSize:10,color:'var(--muted)',marginTop:8,textAlign:'center'}}>
-        自チームの現在スコア: {myScore.total}
+        自チームの現在スコア: {myScore.total}pt
       </div>}
     </div>
 
@@ -1233,14 +1226,18 @@ function ScorePage({gameState,myTeamId,isFinished}){
   if(!myTeam)return<div className="empty">チームに割り当てられるとスコアが表示されます</div>;
   return<div>
     <p className="sec">得点内訳</p>
-    {mode==='double'?<div className="multiply-display">
-      <div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>スコア計算式</div>
-      <div className="multiply-formula">({myTeam.stB}+1)×({myTeam.msB}+1)={myTeam.total}</div>
-    </div>:<div className="score-detail">
+    <div className="score-detail">
+      {mode==='double'?<>
+      <div className="score-row"><span className="lbl">駅到着</span><span className="val">{myTeam.stMasks}pt</span></div>
+      <div className="score-row"><span className="lbl">ミッション達成</span><span className="val">{myTeam.msMasks}pt</span></div>
+      <div className="score-row"><span className="lbl">ビンゴ（{myTeam.stB+myTeam.msB}列×3pt）</span><span className="val">{(myTeam.stB+myTeam.msB)*3}pt</span></div>
+      <div className="score-row"><span>合計</span><span className="val" style={{fontSize:22}}>{myTeam.total}pt</span></div>
+      </>:<>
       <div className="score-row"><span className="lbl">マス（{myTeam.masks}×1pt）</span><span className="val">{myTeam.masks}pt</span></div>
       <div className="score-row"><span className="lbl">ビンゴ（{myTeam.stB}列×3pt）</span><span className="val">{myTeam.stB*3}pt</span></div>
       <div className="score-row"><span>合計</span><span className="val" style={{fontSize:22}}>{myTeam.total}pt</span></div>
-    </div>}
+      </>}
+    </div>
     <p className="sec">プレイログ</p>
     <div>{[...(myTeam.logs||[])].reverse().map((log,i)=>(
       <div key={i} className="li">
@@ -1419,7 +1416,9 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
           <div style={{marginLeft:'auto',fontFamily:'Barlow Condensed',fontSize:26,color:'var(--navy)'}}>{sc.total}pt</div>
         </div>
         <div style={{fontSize:10,color:'var(--muted)'}}>
-          {config?.mode==='double'?`(${sc.stB}+1)×(${sc.msB}+1)=${sc.total}pt`:`マス${sc.masks} BINGO${sc.stB}列 計${sc.total}pt`}
+          {config?.mode==='double'
+            ?`駅${sc.stMasks} + ミッション${sc.msMasks} + BINGO${(sc.stB+sc.msB)*3}pt = ${sc.total}pt`
+            :`マス${sc.masks} + BINGO${sc.stB*3}pt = ${sc.total}pt`}
         </div>
       </div>;
     })}
