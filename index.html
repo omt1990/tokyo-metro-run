@@ -64,8 +64,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-
 .metro-badge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 5px;border-radius:999px;background:var(--surface);border:2px solid currentColor;color:var(--accent);font-family:'Barlow Condensed',sans-serif;font-size:14px;line-height:1;font-weight:700;letter-spacing:.02em;box-shadow:0 1px 0 rgba(20,20,19,.04)}
 .metro-badge.sm{min-width:24px;height:24px;font-size:11px;border-width:1.5px}
 .metro-badge.free{border-color:var(--accent);color:var(--accent)}
-.cell-free-badge{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;border:2px solid var(--accent);color:var(--accent);background:#fff}
-.cell-free-badge svg{display:block}
+.cell-free-badge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 6px;border-radius:999px;border:2px solid var(--accent);color:var(--accent);background:#fff;font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:.08em}
 .multiply-display{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px;margin-bottom:12px;text-align:center}
 .multiply-formula{font-family:'Barlow Condensed',sans-serif;font-size:32px;color:var(--navy);letter-spacing:.06em}
 .score-detail{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px;margin-bottom:12px}
@@ -739,9 +738,9 @@ function MetroBadge({line,code,size='md'}){
   return<span className={`metro-badge ${size==='sm'?'sm':''}`} style={{color:lineInfo?.color||'var(--accent)'}}>{code}</span>;
 }
 function MetroBadgeGroup({station,size='md'}){
-  const badges=station?.badges||[];
+  const badges=(station?.badges&&station.badges.length)?station.badges:getStationBadges(station||{});
   if(!badges.length){
-    return<div className="metro-badges"><span className="cell-free-badge"><Icon name="metro-mark" size={18}/></span></div>;
+    return<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>;
   }
   return<div className="metro-badges">{badges.map((badge,idx)=><MetroBadge key={`${badge.code}-${idx}`} {...badge} size={size}/>)}</div>;
 }
@@ -990,8 +989,8 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
         const bl=stBS.has(i)&&hit;
         const isCorner=CORNER_INDICES.includes(i);
         return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${bl?'bline':''} ${isCorner&&!hit?'corner':''}`}>
-          <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge"><Icon name="metro-mark" size={18}/></span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
-          <div className="bnm">{cell.isFree?'':cell.name}</div>
+          <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
+          <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
         </div>;
       })}
     </div>}
@@ -1003,7 +1002,7 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
         const bl=msBS.has(i)&&hit;
         return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${pend?'pend':''} ${bl?'bline mb':''}`}>
           {!cell.isFree&&<div className="bln"><MissionIcon name={cell.icon} size={15}/></div>}
-          <div className="bnm" style={{fontSize:7}}>{cell.isFree?'':(cell.text||'').slice(0,10)+'…'}</div>
+          <div className="bnm" style={{fontSize:7}}>{cell.isFree?'FREE':(cell.text||'').slice(0,10)+'…'}</div>
         </div>;
       })}
     </div>}
@@ -1165,8 +1164,8 @@ function ScorePage({gameState,myTeamId,isFinished}){
         {(team.stationCard||[]).map((cell,i)=>{
           const hit=cell.isFree||(team.stationReached||[]).includes(cell.id);
           return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''}`}>
-            <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge"><Icon name="metro-mark" size={18}/></span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
-            <div className="bnm">{cell.isFree?'':cell.name}</div>
+            <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
+            <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
           </div>;
         })}
       </div>
