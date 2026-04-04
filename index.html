@@ -52,8 +52,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-
 .bcell.bline{background:#eef8fc;border-color:var(--cyan)}
 .bcell.bline.mb{background:#f4effb;border-color:var(--purple)}
 .bcell.corner{border-color:rgba(230,0,18,.45)}
-.bcell-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;height:100%}
-.bln{font-size:7px;color:var(--muted);line-height:1;text-align:center;width:100%;min-height:20px}
+.bcell-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:100%;height:100%;padding-top:2px}
+.bln{font-size:7px;color:var(--muted);line-height:1;text-align:center;width:100%;min-height:18px;display:flex;align-items:flex-end;justify-content:center}
 .bcell.hit .bln{color:var(--green)}
 .bnm{font-size:6.1px;font-weight:700;color:var(--text);line-height:1.08;text-align:center;word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:14px;padding:0 1px;letter-spacing:-.02em}
 .bcell.hit .bnm{color:#146533}
@@ -769,8 +769,24 @@ function normalizeStationCell(cell){
   if(cell.isFree||cell.id==='FREE')return {...cell,isFree:true,name:'FREE',badges:[]};
   return{...cell,badges:getStationBadges(cell)};
 }
-function normalizeTeamCards(team){
-  return{...team,stationCard:(team.stationCard||[]).map(normalizeStationCell)};
+function repairStationCard(card,routeMode='metro'){
+  const pool=getPool(routeMode).filter(st=>!EXCLUDED_BINGO_STATION_IDS.has(st.id));
+  const normalized=(card||[]).map(normalizeStationCell);
+  const usedIds=new Set(normalized.filter(cell=>cell&&!cell.isFree&&!EXCLUDED_BINGO_STATION_IDS.has(cell.id)).map(cell=>cell.id));
+  return normalized.map(cell=>{
+    if(!cell||cell.isFree||!EXCLUDED_BINGO_STATION_IDS.has(cell.id))return cell;
+    usedIds.delete(cell.id);
+    const targetDifficulty=cell.difficulty||cell.diff||3;
+    const replacementPool=pool.filter(st=>!usedIds.has(st.id)&&st.difficulty===targetDifficulty);
+    const fallbackPool=pool.filter(st=>!usedIds.has(st.id));
+    const replacement=shuffle(replacementPool.length?replacementPool:fallbackPool)[0];
+    if(!replacement)return cell;
+    usedIds.add(replacement.id);
+    return replacement;
+  });
+}
+function normalizeTeamCards(team,routeMode='metro'){
+  return{...team,stationCard:repairStationCard(team.stationCard,routeMode)};
 }
 function syncTeamsToCount(teams,count,cfg,missions){
   let next=[...(teams||[])];
@@ -787,7 +803,7 @@ function syncTeamsToCount(teams,count,cfg,missions){
 function hydrateTeamMembers(gameState){
   const participants=(gameState?.participants||[]).filter(p=>p.active!==false);
   const teams=(gameState?.teams||[]).map(team=>({
-    ...normalizeTeamCards(team),
+    ...normalizeTeamCards(team,gameState?.config?.routeMode||'metro'),
     memberIds:participants.filter(p=>p.teamId===team.id&&p.status==='assigned').map(p=>p.id),
   }));
   return {...gameState,teams};
