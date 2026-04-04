@@ -44,7 +44,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-
 .team-tab{flex:0 0 auto;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;color:var(--muted);white-space:nowrap}
 .team-tab.on{border-color:var(--accent);color:var(--accent)}
 .bgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;background:var(--surface-sub);border:1px solid var(--border);border-radius:20px;overflow:hidden;padding:5px}
-.bcell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:var(--surface);border-radius:13px;padding:2px 1px 3px;position:relative;overflow:hidden;border:1px solid var(--border)}
+.bcell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--surface);border-radius:13px;padding:2px 1px 3px;position:relative;overflow:hidden;border:1px solid var(--border)}
 .bcell.hit{background:#eef8f2;border-color:#84c19a}
 .bcell.hit::after{content:'';position:absolute;top:4px;right:4px;width:7px;height:4px;border-left:2px solid var(--green);border-bottom:2px solid var(--green);transform:rotate(-45deg)}
 .bcell.pend{background:#fff5e8;border-color:#f0c280}
@@ -52,9 +52,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-
 .bcell.bline{background:#eef8fc;border-color:var(--cyan)}
 .bcell.bline.mb{background:#f4effb;border-color:var(--purple)}
 .bcell.corner{border-color:rgba(230,0,18,.45)}
+.bcell-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;height:100%}
 .bln{font-size:7px;color:var(--muted);line-height:1;text-align:center;width:100%;min-height:20px}
 .bcell.hit .bln{color:var(--green)}
-.bnm{font-size:6.1px;font-weight:700;color:var(--text);line-height:1.08;text-align:center;word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:14px;margin-top:auto;padding:0 1px;letter-spacing:-.02em}
+.bnm{font-size:6.1px;font-weight:700;color:var(--text);line-height:1.08;text-align:center;word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:14px;padding:0 1px;letter-spacing:-.02em}
 .bcell.hit .bnm{color:#146533}
 .bcell.free .bnm{color:var(--accent);font-size:7px;min-height:auto}
 .bcell.bline .bnm{color:var(--cyan)}
@@ -533,6 +534,7 @@ const MISSION_ICON_COLORS={
 const STATION_CARD_TARGETS={1:4,2:12,3:4};
 const FIXED_CORNER_COUNT=2;
 const RANDOM_CORNER_COUNT=2;
+const EXCLUDED_BINGO_STATION_IDS=new Set(['otemachi']);
 function shuffle(list){return [...list].sort(()=>Math.random()-.5)}
 function getStationBadges(st){
   const raw=STATION_CODE_MAP[st.id];
@@ -558,7 +560,7 @@ function pickStations(pool,count){
   return shuffle(pool).slice(0,Math.max(0,count));
 }
 function buildStationPools(routeMode='metro'){
-  const pool=getPool(routeMode);
+  const pool=getPool(routeMode).filter(st=>!EXCLUDED_BINGO_STATION_IDS.has(st.id));
   return{
     all:pool,
     fixedCorners:pool.filter(s=>s.isFixedCornerCandidate),
@@ -997,8 +999,10 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
         const bl=stBS.has(i)&&hit;
         const isCorner=CORNER_INDICES.includes(i);
         return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${bl?'bline':''} ${isCorner&&!hit?'corner':''}`}>
-          <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
-          <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
+          <div className="bcell-inner">
+            <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
+            <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
+          </div>
         </div>;
       })}
     </div>}
@@ -1009,8 +1013,10 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
         const pend=!hit&&(viewTeam.missionSubmissions||{})[cell.id]==='pending';
         const bl=msBS.has(i)&&hit;
         return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${pend?'pend':''} ${bl?'bline mb':''}`}>
-          {!cell.isFree&&<div className="bln"><MissionIcon name={cell.icon} size={15}/></div>}
-          <div className="bnm" style={{fontSize:7}}>{cell.isFree?'FREE':(cell.text||'').slice(0,10)+'…'}</div>
+          <div className="bcell-inner">
+            {!cell.isFree&&<div className="bln"><MissionIcon name={cell.icon} size={15}/></div>}
+            <div className="bnm" style={{fontSize:7}}>{cell.isFree?'FREE':(cell.text||'').slice(0,10)+'…'}</div>
+          </div>
         </div>;
       })}
     </div>}
@@ -1172,8 +1178,10 @@ function ScorePage({gameState,myTeamId,isFinished}){
         {(team.stationCard||[]).map((cell,i)=>{
           const hit=cell.isFree||(team.stationReached||[]).includes(cell.id);
           return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''}`}>
-            <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
-            <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
+            <div className="bcell-inner">
+              <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
+              <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
+            </div>
           </div>;
         })}
       </div>
