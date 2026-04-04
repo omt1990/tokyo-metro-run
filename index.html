@@ -10,264 +10,200 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Barlow+Condensed:wght@500;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Noto Sans JP',sans-serif;background:#0a0e1a;color:#e8eaf0;min-height:100vh}
+body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-height:100vh}
 :root{
-  --red:#e60012;--orange:#f68b1e;--yellow:#f5c518;--green:#00a650;
-  --cyan:#00b2d6;--purple:#8f76d6;--card:#141824;--card2:#1a1f2e;
-  --border:rgba(255,255,255,0.1);--muted:#8892a4;--gold:#f5c518
+  --red:#e60012;--orange:#f39700;--yellow:#c4b000;--green:#009944;
+  --cyan:#00a6d6;--purple:#8f76d6;--metro-blue:#009bbf;--navy:#1f2f56;
+  --bg:#f7f8f5;--surface:#ffffff;--surface-sub:#f1f4f6;--surface-alt:#edf2f5;
+  --border:#d7dde2;--border-strong:#b8c5ce;--text:#141413;--muted:#687681;--gold:#c4b000
 }
-.wrap{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
-
-/* HEADER */
-.hdr{background:#141824;border-bottom:1px solid var(--border);padding:10px 14px;
-  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;
-  background:linear-gradient(90deg,#e60012,#f68b1e,#f5c518);-webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;background-clip:text}
-.timer{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);line-height:1;text-align:right}
+.wrap{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);border-right:1px solid var(--border)}
+.hdr{background:var(--surface);border-bottom:1px solid var(--border-strong);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--metro-blue);line-height:1}
+.timer{font-family:'Barlow Condensed',sans-serif;font-size:28px;color:var(--navy);line-height:1;text-align:right}
 .timer.end{color:var(--red);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-
-/* SCORE BAR */
-.sbar{background:var(--card);padding:8px 14px;display:flex;gap:6px;border-bottom:1px solid var(--border)}
-.si{flex:1;background:var(--card2);border-radius:8px;padding:7px 8px;text-align:center;border:1px solid var(--border)}
-.sl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.sv{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1.1;color:var(--gold)}
+.sbar{background:var(--surface-sub);padding:10px 14px;display:flex;gap:8px;border-bottom:1px solid var(--border)}
+.si{flex:1;background:var(--surface);border-radius:16px;padding:9px 8px;text-align:center;border:1px solid var(--border)}
+.sl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.18em}
+.sv{font-family:'Barlow Condensed',sans-serif;font-size:28px;line-height:1.1;color:var(--navy)}
 .sv.b{color:var(--cyan)}.sv.g{color:var(--green)}.sv.p{color:var(--purple)}
-
-/* NAV */
-.nav{display:flex;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto}
-.nt{flex:0 0 auto;padding:9px 10px;text-align:center;font-size:9px;color:var(--muted);cursor:pointer;
-  border:none;background:none;border-bottom:2px solid transparent;
-  display:flex;flex-direction:column;align-items:center;gap:2px;font-family:'Noto Sans JP',sans-serif;min-width:58px}
-.nt.on{color:var(--yellow);border-bottom-color:var(--yellow)}
+.nav{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto}
+.nt{flex:0 0 auto;padding:11px 10px;text-align:center;font-size:9px;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:'Noto Sans JP',sans-serif;min-width:58px}
+.nt.on{color:var(--metro-blue);border-bottom-color:var(--metro-blue)}
 .ni{font-size:16px}
-.cnt{flex:1;padding:14px;overflow-y:auto}
-.sec{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:14px}
-
-/* BINGO */
-.btabs{display:flex;gap:6px;margin-bottom:10px}
-.btab{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);
-  font-size:11px;font-weight:700;cursor:pointer;text-align:center;font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
-.btab.on.st{border-color:var(--cyan);color:var(--cyan);background:rgba(0,178,214,.08)}
+.cnt{flex:1;padding:16px 14px 24px;overflow-y:auto;background:var(--bg)}
+.sec{font-size:10px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;margin-top:18px}
+.btabs{display:flex;gap:8px;margin-bottom:12px}
+.btab{flex:1;padding:10px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;text-align:center;font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
+.btab.on.st{border-color:var(--cyan);color:var(--cyan);background:rgba(0,166,214,.08)}
 .btab.on.ms{border-color:var(--purple);color:var(--purple);background:rgba(143,118,214,.08)}
-.team-tabs{display:flex;gap:5px;margin-bottom:10px;overflow-x:auto}
-.team-tab{flex:0 0 auto;padding:5px 12px;border-radius:20px;border:1px solid var(--border);
-  background:var(--card2);font-size:11px;font-weight:700;cursor:pointer;
-  font-family:'Noto Sans JP',sans-serif;color:var(--muted);white-space:nowrap}
-.team-tab.on{border-color:var(--yellow);color:var(--yellow)}
-.bgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--border);
-  border:1px solid var(--border);border-radius:10px;overflow:hidden;padding:2px}
-.bcell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:var(--card2);border-radius:4px;padding:2px;position:relative;overflow:hidden}
-.bcell.hit{background:#1a3a1a;border:1px solid var(--green)}
+.team-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
+.team-tab{flex:0 0 auto;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;color:var(--muted);white-space:nowrap}
+.team-tab.on{border-color:var(--metro-blue);color:var(--metro-blue)}
+.bgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--surface-sub);border:1px solid var(--border);border-radius:20px;overflow:hidden;padding:6px}
+.bcell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--surface);border-radius:14px;padding:4px;position:relative;overflow:hidden;border:1px solid var(--border)}
+.bcell.hit{background:#eef8f2;border-color:#84c19a}
 .bcell.hit::after{content:'✓';position:absolute;top:1px;right:2px;font-size:7px;color:var(--green)}
-.bcell.pend{background:#2a1a00;border:1px solid var(--orange)}
-.bcell.free{background:#1a1a00;border:1px solid var(--yellow)}
-.bcell.bline{background:#0d1f2d;border:1px solid var(--cyan)}
-.bcell.bline.mb{background:#1a0d2d;border:1px solid var(--purple)}
-.bcell.corner{box-shadow:inset 0 0 0 1px rgba(230,0,18,.3)}
+.bcell.pend{background:#fff5e8;border-color:#f0c280}
+.bcell.free{background:#f5fbfd;border-color:var(--metro-blue)}
+.bcell.bline{background:#eef8fc;border-color:var(--cyan)}
+.bcell.bline.mb{background:#f4effb;border-color:var(--purple)}
+.bcell.corner{border-color:rgba(230,0,18,.45)}
 .bln{font-size:7px;color:var(--muted);line-height:1;text-align:center}
 .bcell.hit .bln{color:var(--green)}
-.bnm{font-size:8px;font-weight:700;color:#e8eaf0;line-height:1.2;text-align:center;word-break:break-all}
-.bcell.hit .bnm{color:#7fdd7f}
-.bcell.free .bnm{color:var(--yellow);font-size:7px}
+.bnm{font-size:8px;font-weight:700;color:var(--text);line-height:1.2;text-align:center;word-break:break-all}
+.bcell.hit .bnm{color:#146533}
+.bcell.free .bnm{color:var(--metro-blue);font-size:7px}
 .bcell.bline .bnm{color:var(--cyan)}
 .bcell.bline.mb .bnm{color:var(--purple)}
 .bcell.pend .bnm{color:var(--orange)}
-
-/* MULTIPLY */
-.multiply-display{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;text-align:center}
-.multiply-formula{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);letter-spacing:2px}
-
-/* SCORE DETAIL */
-.score-detail{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.multiply-display{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px;margin-bottom:12px;text-align:center}
+.multiply-formula{font-family:'Barlow Condensed',sans-serif;font-size:32px;color:var(--navy);letter-spacing:.06em}
+.score-detail{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px;margin-bottom:12px}
 .score-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
-.score-row:last-child{border-bottom:none;font-weight:700;color:#e8eaf0;padding-top:8px;margin-top:4px}
+.score-row:last-child{border-bottom:none;font-weight:700;color:var(--text);padding-top:8px;margin-top:4px}
 .score-row .lbl{color:var(--muted)}
-.score-row .val{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--gold)}
+.score-row .val{font-family:'Barlow Condensed',sans-serif;font-size:18px;color:var(--navy)}
 .score-row .val.neg{color:var(--red)}
-
-/* MISSION */
-.mission-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;
-  padding:11px;margin-bottom:7px;cursor:pointer;display:flex;align-items:flex-start;gap:9px}
+.mission-item{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:11px;margin-bottom:7px;cursor:pointer;display:flex;align-items:flex-start;gap:9px}
 .mission-item.done{border-color:var(--green);background:rgba(0,166,80,.06)}
 .mission-item.pend{border-color:var(--orange);background:rgba(246,139,30,.06)}
-.mn{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--muted);flex-shrink:0;width:22px;line-height:1}
+.mn{font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--muted);flex-shrink:0;width:22px;line-height:1}
 .mission-item.done .mn{color:var(--green)}.mission-item.pend .mn{color:var(--orange)}
 .mb2{flex:1}
 .mt{font-size:11px;font-weight:700;line-height:1.5}
 .me{font-size:10px;color:var(--muted);margin-top:2px}
-.ms-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;flex-shrink:0;margin-top:2px}
-.ms-none{background:var(--card);color:var(--muted);border:1px solid var(--border)}
+.ms-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;flex-shrink:0;margin-top:2px}
+.ms-none{background:var(--surface-sub);color:var(--muted);border:1px solid var(--border)}
 .ms-pend{background:rgba(246,139,30,.15);color:var(--orange)}
 .ms-done{background:rgba(0,166,80,.15);color:var(--green)}
 .ms-rej{background:rgba(230,0,18,.15);color:var(--red)}
-
-/* PHOTO */
-.photo-area{border:1.5px dashed var(--border);border-radius:10px;padding:14px;
-  text-align:center;cursor:pointer;position:relative;overflow:hidden}
+.photo-area{border:1.5px dashed var(--border);border-radius:18px;padding:14px;text-align:center;cursor:pointer;position:relative;overflow:hidden;background:var(--surface)}
 .photo-area.has{border-color:var(--green);border-style:solid}
-.photo-preview{width:100%;max-height:160px;object-fit:cover;border-radius:8px;display:block}
+.photo-preview{width:100%;max-height:160px;object-fit:cover;border-radius:12px;display:block}
 .photo-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-
-/* BTN */
-.btn{padding:12px;border-radius:10px;border:none;font-size:14px;font-weight:700;
-  font-family:'Noto Sans JP',sans-serif;cursor:pointer;width:100%;margin-top:8px}
-.btn.pri{background:linear-gradient(135deg,var(--yellow),#c9a200);color:#000}
-.btn.grn{background:linear-gradient(135deg,var(--green),#005c2e);color:#fff}
-.btn.sec{background:var(--card2);color:var(--muted);border:1px solid var(--border)}
-.btn.red{background:linear-gradient(135deg,var(--red),#8b0000);color:#fff}
+.btn{padding:12px;border-radius:14px;border:none;font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;width:100%;margin-top:8px}
+.btn.pri{background:var(--metro-blue);color:#fff}
+.btn.grn{background:var(--green);color:#fff}
+.btn.sec{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn.red{background:var(--red);color:#fff}
 .btn.ghost{background:none;color:var(--muted);border:none;font-size:13px;padding:8px}
-.btn:active{transform:scale(.98)}
-
-/* ARRIVAL */
+.btn:active{transform:translateY(1px)}
 .lsel{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
-.lbtn{padding:4px 9px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;
-  border:1px solid transparent;font-family:'Noto Sans JP',sans-serif}
-.sinp{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;
-  padding:9px 12px;color:#e8eaf0;font-size:13px;font-family:'Noto Sans JP',sans-serif;
-  margin-bottom:8px;outline:none}
-.sinp:focus{border-color:rgba(255,255,255,.3)}
+.lbtn{padding:5px 10px;border-radius:999px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid transparent;font-family:'Noto Sans JP',sans-serif}
+.sinp{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'Noto Sans JP',sans-serif;margin-bottom:8px;outline:none}
+.sinp:focus{border-color:var(--metro-blue)}
 .sinp::placeholder{color:var(--muted)}
 .sinp.sm{padding:7px 10px;font-size:12px;margin-bottom:6px}
 .slist{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;max-height:200px;overflow-y:auto}
-.sbtn{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 9px;
-  text-align:left;cursor:pointer;display:flex;align-items:center;gap:6px;
-  color:#e8eaf0;font-size:11px;font-family:'Noto Sans JP',sans-serif}
+.sbtn{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:7px 9px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--text);font-size:11px;font-family:'Noto Sans JP',sans-serif}
 .sbtn.oncard{border-color:rgba(0,178,214,.5);background:rgba(0,178,214,.06)}
 .sbtn.done{opacity:.4}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-
-/* RANKING */
-.rank{background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px}
-.rh{padding:8px 14px;background:var(--card2);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)}
+.rank{background:var(--surface);border-radius:20px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px}
+.rh{padding:8px 14px;background:var(--surface-sub);font-size:10px;color:var(--muted);letter-spacing:.2em;border-bottom:1px solid var(--border)}
 .rrow{display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);gap:10px}
 .rrow:last-child{border-bottom:none}
-.rrow.me{background:rgba(245,197,24,.06);border-left:3px solid var(--yellow)}
-.rn{font-family:'Bebas Neue',sans-serif;font-size:20px;width:24px;color:var(--muted);flex-shrink:0}
+.rrow.me{background:rgba(0,155,191,.06);border-left:3px solid var(--metro-blue)}
+.rn{font-family:'Barlow Condensed',sans-serif;font-size:24px;width:24px;color:var(--muted);flex-shrink:0}
 .rn.g{color:var(--gold)}.rn.s{color:#b0b8c8}.rn.b{color:var(--orange)}
 .rt{flex:1}.rtn{font-weight:700;font-size:13px;display:flex;align-items:center;gap:5px}
 .rtd{font-size:10px;color:var(--muted);margin-top:2px}
-.rs{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--gold)}
-
-/* LOG */
+.rs{font-family:'Barlow Condensed',sans-serif;font-size:30px;color:var(--navy)}
 .li{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start}
 .li:last-child{border-bottom:none}
-.lic{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:13px;flex-shrink:0;background:var(--card2);border:1px solid var(--border)}
+.lic{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:var(--surface-sub);border:1px solid var(--border)}
 .lic.s{border-color:var(--green)}.lic.bingo{border-color:var(--cyan)}
 .lic.st{border-color:var(--yellow)}.lic.ev{border-color:var(--red)}.lic.ms{border-color:var(--purple)}
 .lb{flex:1}.lt{font-size:12px;font-weight:700}.ls{font-size:10px;color:var(--muted);margin-top:1px}
-.ltm{font-family:'Bebas Neue',sans-serif;font-size:13px;color:var(--muted);flex-shrink:0}
-
-/* EVENT BANNER */
-.evbanner{border-radius:10px;padding:10px 12px;margin:6px 14px;display:flex;align-items:center;gap:10px}
+.ltm{font-family:'Barlow Condensed',sans-serif;font-size:15px;color:var(--muted);flex-shrink:0}
+.evbanner{border-radius:18px;padding:10px 12px;margin:6px 14px;display:flex;align-items:center;gap:10px}
 .evbanner.active{background:rgba(230,0,18,.12);border:1px solid var(--red)}
-
-/* ADMIN */
 .admin-tabs{display:flex;gap:6px;margin-bottom:12px}
-.admin-tab{flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:var(--card2);
-  font-size:11px;font-weight:700;cursor:pointer;text-align:center;font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
-.admin-tab.on{border-color:var(--red);color:var(--red);background:rgba(230,0,18,.08)}
-.appr-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px}
+.admin-tab{flex:1;padding:8px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;text-align:center;font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
+.admin-tab.on{border-color:var(--metro-blue);color:var(--metro-blue);background:rgba(0,155,191,.08)}
+.appr-item{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:12px;margin-bottom:8px}
 .appr-btns{display:flex;gap:6px;margin-top:8px}
-.appr-btn{flex:1;padding:8px;border-radius:8px;border:none;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer}
+.appr-btn{flex:1;padding:8px;border-radius:10px;border:none;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer}
 .appr-ok{background:rgba(0,166,80,.2);color:var(--green);border:1px solid rgba(0,166,80,.4)}
 .appr-ng{background:rgba(230,0,18,.15);color:var(--red);border:1px solid rgba(230,0,18,.3)}
-
-/* MODAL / OVERLAY */
-.center-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:600;
-  display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;
-  width:100%;max-width:380px;max-height:90vh;overflow-y:auto}
+.center-overlay{position:fixed;inset:0;background:rgba(20,20,19,.28);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
+.modal{background:var(--surface);border:1px solid var(--border-strong);border-radius:24px;padding:20px;width:100%;max-width:380px;max-height:90vh;overflow-y:auto}
 .modal-title{font-size:16px;font-weight:700;margin-bottom:12px;text-align:center}
 .modal-sub{font-size:11px;color:var(--muted);text-align:center;margin-bottom:16px;line-height:1.6}
-.modal-input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;
-  padding:11px;color:#e8eaf0;font-size:15px;font-family:'Noto Sans JP',sans-serif;
-  outline:none;text-align:center;letter-spacing:4px;margin-bottom:8px}
+.modal-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px;color:var(--text);font-size:15px;font-family:'Noto Sans JP',sans-serif;outline:none;text-align:center;letter-spacing:4px;margin-bottom:8px}
 .modal-input.left{text-align:left;letter-spacing:normal;font-size:13px}
 .color-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
 .cswatch{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent}
-.cswatch.sel{border-color:#fff;transform:scale(1.15)}
-.code-display{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;margin-bottom:12px}
-.code-big{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:10px;color:var(--yellow);line-height:1}
-
-/* MODE CARD */
-.mode-card{background:var(--card2);border:1.5px solid var(--border);border-radius:10px;
-  padding:12px 14px;cursor:pointer;margin-bottom:8px}
+.cswatch.sel{border-color:var(--navy);transform:scale(1.15)}
+.code-display{background:var(--surface-sub);border:1px solid var(--border);border-radius:20px;padding:16px;text-align:center;margin-bottom:12px}
+.code-big{font-family:'Barlow Condensed',sans-serif;font-size:56px;letter-spacing:.18em;color:var(--metro-blue);line-height:1}
+.mode-card{background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:12px 14px;cursor:pointer;margin-bottom:8px}
 .mode-card.sel.basic{border-color:var(--cyan)}
 .mode-card.sel.double{border-color:var(--purple)}
 .mode-card-title{font-size:13px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between}
 .mode-card-desc{font-size:10px;color:var(--muted);line-height:1.6}
 .route-row{display:flex;gap:6px;margin-bottom:10px}
-.route-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);
-  font-size:11px;font-weight:700;cursor:pointer;text-align:center;font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
-.route-btn.sel{border-color:var(--yellow);color:var(--yellow)}
-
-/* SETUP STEPS */
+.route-btn{flex:1;padding:9px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;text-align:center;font-family:'Noto Sans JP',sans-serif;color:var(--muted)}
+.route-btn.sel{border-color:var(--metro-blue);color:var(--metro-blue)}
 .step-indicator{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px}
 .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
-.step-dot.active{background:var(--yellow);width:20px;border-radius:4px}
+.step-dot.active{background:var(--metro-blue);width:20px;border-radius:4px}
 .step-dot.done{background:var(--green)}
 .step-label{font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px}
-
-/* RULE SCREEN */
-.rule-screen{position:fixed;inset:0;background:#0a0e1a;z-index:700;overflow-y:auto;display:flex;flex-direction:column}
+.rule-screen{position:fixed;inset:0;background:var(--bg);z-index:700;overflow-y:auto;display:flex;flex-direction:column}
 .rule-hero{padding:32px 20px 20px;text-align:center}
-.rule-hero-title{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:3px;
-  background:linear-gradient(90deg,#e60012,#f68b1e,#f5c518);-webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+.rule-hero-title{font-family:'Barlow Condensed',sans-serif;font-size:42px;letter-spacing:.08em;color:var(--metro-blue);margin-bottom:6px}
 .rule-hero-sub{font-size:12px;color:var(--muted)}
 .rule-body{flex:1;padding:0 16px 16px}
-.rule-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.rule-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px;margin-bottom:10px}
 .rule-card-title{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .rule-card-body{font-size:12px;color:var(--muted);line-height:2}
 .rule-step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
-.rule-step-num{width:22px;height:22px;border-radius:50%;background:var(--yellow);color:#000;
-  font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rule-step-num{width:22px;height:22px;border-radius:50%;background:var(--metro-blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .rule-step-text{font-size:12px;color:var(--muted);line-height:1.7;padding-top:2px}
 .rule-check{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
-.rule-check-icon{color:var(--yellow);font-size:12px;flex-shrink:0;padding-top:2px}
+.rule-check-icon{color:var(--metro-blue);font-size:12px;flex-shrink:0;padding-top:2px}
 .rule-check-text{font-size:12px;color:var(--muted);line-height:1.7}
-.rule-footer{padding:16px;position:sticky;bottom:0;background:linear-gradient(to top,#0a0e1a 80%,transparent)}
-
-/* CUSTOM SETTINGS */
+.rule-footer{padding:16px;position:sticky;bottom:0;background:rgba(247,248,245,.96);border-top:1px solid var(--border)}
 .custom-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
 .custom-row:last-child{border-bottom:none}
 .custom-label{font-size:12px;color:var(--muted)}
 .custom-value{font-size:13px;font-weight:700}
 .num-input{display:flex;align-items:center;gap:8px}
-.num-btn{width:28px;height:28px;border-radius:50%;background:var(--card2);border:1px solid var(--border);
-  color:#e8eaf0;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Noto Sans JP',sans-serif}
+.num-btn{width:28px;height:28px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Noto Sans JP',sans-serif}
 .toggle-row{display:flex;align-items:center;gap:8px}
 .toggle{width:36px;height:20px;border-radius:10px;background:var(--border);cursor:pointer;position:relative;transition:background .2s}
 .toggle.on{background:var(--green)}
 .toggle::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:white;transition:left .2s}
 .toggle.on::after{left:19px}
-.plan-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(246,139,30,.15);color:var(--orange);border:1px solid rgba(246,139,30,.3)}
-
-/* TOAST */
-.tcon{position:fixed;top:65px;left:50%;transform:translateX(-50%);z-index:9999;
-  display:flex;flex-direction:column;gap:7px;width:360px;max-width:92vw;pointer-events:none}
-.toast{background:var(--card);border-radius:10px;padding:10px 14px;border:1px solid;
-  animation:tin .3s ease-out;font-size:12px;display:flex;align-items:center;gap:9px}
+.plan-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(246,139,30,.15);color:var(--orange);border:1px solid rgba(246,139,30,.3)}
+.tcon{position:fixed;top:65px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:7px;width:360px;max-width:92vw;pointer-events:none}
+.toast{background:var(--surface);border-radius:18px;padding:10px 14px;border:1px solid;animation:tin .3s ease-out;font-size:12px;display:flex;align-items:center;gap:9px}
 .toast.ok{border-color:var(--green)}.toast.bingo{border-color:var(--cyan)}
 .toast.warn{border-color:var(--orange)}.toast.ev{border-color:var(--red)}.toast.ms{border-color:var(--purple)}
 @keyframes tin{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:9px;font-weight:700}
 .badge-pend{background:rgba(246,139,30,.15);color:var(--orange);border:1px solid rgba(246,139,30,.3)}
 .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px}
-.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--yellow);border-radius:50%;animation:spin 1s linear infinite}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--metro-blue);border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:12px}
-.chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:12px;font-size:10px;font-weight:700;gap:4px}
+.chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;gap:4px}
 .chip.cyan{background:rgba(0,178,214,.12);color:var(--cyan);border:1px solid rgba(0,178,214,.25)}
 .chip.purple{background:rgba(143,118,214,.12);color:var(--purple);border:1px solid rgba(143,118,214,.25)}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+textarea.sinp{resize:vertical}
+@media (max-width:480px){
+  .wrap{border:none}
+  .logo{font-size:26px}
+  .timer{font-size:24px}
+  .code-big{font-size:48px}
+}
 </style>
 </head>
 <body>
@@ -760,7 +696,7 @@ function RuleScreen({gameState,onClose,requireConfirm=false}){
           ['🂺 J・Q・K','それぞれ11・12・13として扱う'],
         ].map(([t,d],i)=><div key={i} className="rule-check">
           <div className="rule-check-icon">▸</div>
-          <div className="rule-check-text"><span style={{fontWeight:700,color:'#e8eaf0'}}>{t}：</span>{d}</div>
+          <div className="rule-check-text"><span style={{fontWeight:700,color:'var(--text)'}}>{t}：</span>{d}</div>
         </div>)}
       </div>
       {mode==='double'&&<div className="rule-card">
@@ -922,12 +858,12 @@ function ArrivalPage({team,config,onArrive}){
   const linesInPool=[...new Set(pool.map(s=>s.line))];
   const lastId=(team.stationReached||[]).filter(id=>id!=='FREE').slice(-1)[0];
   return<div>
-    {lastId&&<div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:10}}>
+    {lastId&&<div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:'10px 12px',marginBottom:10}}>
       <div style={{fontSize:10,color:'var(--muted)',marginBottom:3}}>現在地（最終記録）</div>
       <div style={{fontSize:20,fontWeight:700}}>{pool.find(s=>s.id===lastId)?.name||lastId}</div>
     </div>}
     <div className="lsel">
-      <button className="lbtn" style={{background:!selLine?'rgba(255,255,255,.15)':'var(--card2)',color:'#e8eaf0',borderColor:!selLine?'rgba(255,255,255,.4)':'var(--border)',opacity:!selLine?1:.6}} onClick={()=>setSelLine(null)}>全線</button>
+      <button className="lbtn" style={{background:!selLine?'rgba(0,155,191,.1)':'var(--surface)',color:!selLine?'var(--metro-blue)':'var(--text)',borderColor:!selLine?'var(--metro-blue)':'var(--border)',opacity:1}} onClick={()=>setSelLine(null)}>全線</button>
       {linesInPool.map(k=>{const l=METRO_LINES[k];if(!l)return null;return(
         <button key={k} className="lbtn" style={{background:l.color+(selLine===k?'cc':'33'),color:selLine===k?'#fff':l.color,borderColor:l.color,opacity:selLine&&selLine!==k?.5:1}} onClick={()=>setSelLine(selLine===k?null:k)}>{l.name}</button>
       );})}
@@ -971,7 +907,7 @@ function MissionPage({team,onSubmitMission}){
   const cardMissions=(team.missionCard||[]).filter(c=>!c.isFree);
   if(sel)return<div>
     <button onClick={()=>{setSel(null);setPhoto(null);setNote('');}} className="btn ghost" style={{marginTop:0,marginBottom:8,textAlign:'left'}}>← 一覧に戻る</button>
-    <div style={{background:'var(--card2)',borderRadius:10,padding:12,marginBottom:12}}>
+    <div style={{background:'var(--surface-sub)',borderRadius:18,padding:12,marginBottom:12,border:'1px solid var(--border)'}}>
       <div style={{fontSize:22,marginBottom:6}}>{sel.icon}</div>
       <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>{sel.text}</div>
       <div style={{fontSize:11,color:'var(--muted)'}}>📋 証拠：{sel.evidence}</div>
@@ -1013,11 +949,11 @@ function ScorePage({gameState,myTeamId,isFinished}){
   const teams=[...(gameState.teams||[])].map(t=>({...t,...calcScore(t,config)}));
   const myTeam=teams.find(t=>t.id===myTeamId);
   const renderBoard=(team)=>(
-    <div key={team.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:12,padding:12,marginBottom:12}}>
+    <div key={team.id} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:12,marginBottom:12}}>
       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
         <div className="dot" style={{background:team.color,width:10,height:10}}></div>
         <div style={{fontWeight:700}}>{team.name}</div>
-        <div style={{marginLeft:'auto',fontFamily:'Bebas Neue',fontSize:22,color:'var(--gold)'}}>{team.total}pt</div>
+        <div style={{marginLeft:'auto',fontFamily:'Barlow Condensed',fontSize:26,color:'var(--navy)'}}>{team.total}pt</div>
       </div>
       <div className="bgrid" style={{marginBottom:8}}>
         {(team.stationCard||[]).map((cell,i)=>{
@@ -1075,18 +1011,18 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
   return<div>
     <div style={{background:'rgba(230,0,18,.1)',border:'1px solid var(--red)',borderRadius:8,padding:'8px 12px',marginBottom:10,fontSize:11,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
       <span style={{fontWeight:700,color:'var(--red)'}}>🔒 運営モード</span>
-      <span style={{fontFamily:'Bebas Neue',fontSize:15,color:'var(--yellow)',letterSpacing:2}}>{gameState.gameCode}</span>
+      <span style={{fontFamily:'Barlow Condensed',fontSize:18,color:'var(--metro-blue)',letterSpacing:2}}>{gameState.gameCode}</span>
       <span className="chip cyan">{gameState.title}</span>
       <span className="chip cyan">{stateLabels[gameState.state]}</span>
       <span className="chip cyan">参加 {participantCounts.all.length}/{config?.playerLimit||0}</span>
     </div>
-    <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:12,marginBottom:12}}>
+    <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:12,marginBottom:12}}>
       <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>大会状態</div>
       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:8}}>
         {['recruiting','team_building','finished'].map(state=>(
-          <button key={state} className="lbtn" style={{background:gameState.state===state?'rgba(255,255,255,.15)':'var(--card2)',color:'#e8eaf0',border:'1px solid var(--border)'}} onClick={()=>onChangeGameState(state)}>{stateLabels[state]}</button>
+          <button key={state} className="lbtn" style={{background:gameState.state===state?'rgba(0,155,191,.1)':'var(--surface)',color:gameState.state===state?'var(--metro-blue)':'var(--text)',border:'1px solid var(--border)'}} onClick={()=>onChangeGameState(state)}>{stateLabels[state]}</button>
         ))}
-        <button className="lbtn" style={{background:canStartGame(gameState)?'rgba(0,166,80,.2)':'var(--card2)',color:canStartGame(gameState)?'var(--green)':'var(--muted)',border:'1px solid var(--border)'}} disabled={!canStartGame(gameState)} onClick={()=>onChangeGameState('in_progress')}>ゲーム開始</button>
+        <button className="lbtn" style={{background:canStartGame(gameState)?'rgba(0,166,80,.12)':'var(--surface)',color:canStartGame(gameState)?'var(--green)':'var(--muted)',border:'1px solid var(--border)'}} disabled={!canStartGame(gameState)} onClick={()=>onChangeGameState('in_progress')}>ゲーム開始</button>
       </div>
       {startBlockers.length>0&&<div style={{fontSize:10,color:'var(--orange)',lineHeight:1.7}}>
         {startBlockers.map((msg,i)=><div key={i}>・{msg}</div>)}
@@ -1100,7 +1036,7 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
       <button className={`admin-tab ${tab==='scores'?'on':''}`} onClick={()=>setTab('scores')}>スコア</button>
     </div>
     {tab==='participants'&&<>
-      <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:12,marginBottom:10}}>
+      <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:12,marginBottom:10}}>
         <div className="custom-row">
           <span className="custom-label">プレイヤー上限</span>
           <div className="num-input">
@@ -1121,7 +1057,7 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
       </div>
       {(gameState.participants||[]).filter(p=>p.active!==false&&p.status!=='pending').map(participant=>{
         const team=getParticipantTeam(participant,gameState.teams);
-        return<div key={participant.id} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:10,marginBottom:8}}>
+        return<div key={participant.id} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:10,marginBottom:8}}>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
             <div style={{fontWeight:700,fontSize:13}}>{participant.name}</div>
             <span className="chip cyan">{participant.status==='assigned'?'割り当て済み':'未割り当て'}</span>
@@ -1171,7 +1107,7 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
     {tab==='teams'&&<>
       {(gameState.teams||[]).map(team=>{
         const memberCount=(team.memberIds||[]).length;
-        return<div key={team.id} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:12,marginBottom:8}}>
+        return<div key={team.id} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:12,marginBottom:8}}>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
             <div className="dot" style={{background:team.color,width:10,height:10}}></div>
             <input className="sinp sm" style={{margin:0,flex:1}} value={team.name} onChange={e=>onRenameTeam(team.id,e.target.value)}/>
@@ -1180,8 +1116,8 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
           <div className="color-row" style={{marginBottom:8}}>{TEAM_COLORS.map(c=><div key={c} className={`cswatch ${team.color===c?'sel':''}`} style={{background:c}} onClick={()=>onSetTeamColor(team.id,c)}></div>)}</div>
           <div style={{fontSize:11,fontWeight:700,marginBottom:6}}>手動スコア補正</div>
           <div style={{display:'flex',gap:6}}>
-            <button className="lbtn" style={{background:'var(--card)',color:'#e8eaf0',border:'1px solid var(--border)'}} onClick={()=>onAdjustScore(team.id,-1)}>-1</button>
-            <button className="lbtn" style={{background:'var(--card)',color:'#e8eaf0',border:'1px solid var(--border)'}} onClick={()=>onAdjustScore(team.id,1)}>+1</button>
+            <button className="lbtn" style={{background:'var(--surface-sub)',color:'var(--text)',border:'1px solid var(--border)'}} onClick={()=>onAdjustScore(team.id,-1)}>-1</button>
+            <button className="lbtn" style={{background:'var(--surface-sub)',color:'var(--text)',border:'1px solid var(--border)'}} onClick={()=>onAdjustScore(team.id,1)}>+1</button>
             <span style={{fontSize:10,color:'var(--muted)',display:'flex',alignItems:'center'}}>現在 {team.manualScoreDelta||0}pt</span>
           </div>
         </div>;
@@ -1190,7 +1126,7 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
     {tab==='events'&&<>
       {(gameState.events||[]).length===0&&<div className="empty">イベントはありません</div>}
       {(gameState.events||[]).map(ev=>(
-        <div key={ev.id} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:8,display:'flex',alignItems:'flex-start',gap:8}}>
+        <div key={ev.id} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:'10px 12px',marginBottom:8,display:'flex',alignItems:'flex-start',gap:8}}>
           <div style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:8,flexShrink:0,marginTop:2,
             background:ev.status==='active'?'rgba(230,0,18,.15)':ev.status==='done'?'rgba(0,166,80,.15)':'rgba(245,197,24,.15)',
             color:ev.status==='active'?'var(--red)':ev.status==='done'?'var(--green)':'var(--yellow)',
@@ -1204,17 +1140,17 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
             {ev.reward&&<div style={{fontSize:10,color:'var(--orange)',marginTop:2}}>報酬：{ev.reward}</div>}
           </div>
           {ev.status==='pending'&&<button onClick={()=>onFireEvent(ev.id,'start')} style={{background:'var(--red)',color:'#fff',border:'none',borderRadius:6,padding:'5px 9px',fontSize:10,fontWeight:700,cursor:'pointer',fontFamily:'Noto Sans JP,sans-serif'}}>発動</button>}
-          {ev.status==='active'&&<button onClick={()=>onFireEvent(ev.id,'end')} style={{background:'var(--card)',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:6,padding:'5px 9px',fontSize:10,fontWeight:700,cursor:'pointer',fontFamily:'Noto Sans JP,sans-serif'}}>終了</button>}
+          {ev.status==='active'&&<button onClick={()=>onFireEvent(ev.id,'end')} style={{background:'var(--surface-sub)',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 9px',fontSize:10,fontWeight:700,cursor:'pointer',fontFamily:'Noto Sans JP,sans-serif'}}>終了</button>}
         </div>
       ))}
       <p className="sec">イベントを追加</p>
-      <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:12}}>
+      <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:12}}>
         <input className="sinp sm" placeholder="イベント名" value={newEv.name} onChange={e=>setNewEv({...newEv,name:e.target.value})}/>
         <input className="sinp sm" placeholder="説明（任意）" value={newEv.desc} onChange={e=>setNewEv({...newEv,desc:e.target.value})}/>
         <input className="sinp sm" placeholder="報酬（例：任意1マス）" value={newEv.reward} onChange={e=>setNewEv({...newEv,reward:e.target.value})}/>
         <div style={{display:'flex',gap:6,marginBottom:8}}>
-          <button className="lbtn" style={{background:newEv.type==='manual'?'rgba(255,255,255,.15)':'var(--card2)',color:'#e8eaf0',border:'1px solid var(--border)',flex:1,padding:'7px'}} onClick={()=>setNewEv({...newEv,type:'manual'})}>👆 手動発動</button>
-          <button className="lbtn" style={{background:newEv.type==='time'?'rgba(255,255,255,.15)':'var(--card2)',color:'#e8eaf0',border:'1px solid var(--border)',flex:1,padding:'7px'}} onClick={()=>setNewEv({...newEv,type:'time'})}>⏰ 時刻指定</button>
+          <button className="lbtn" style={{background:newEv.type==='manual'?'rgba(0,155,191,.1)':'var(--surface)',color:newEv.type==='manual'?'var(--metro-blue)':'var(--text)',border:'1px solid var(--border)',flex:1,padding:'7px'}} onClick={()=>setNewEv({...newEv,type:'manual'})}>👆 手動発動</button>
+          <button className="lbtn" style={{background:newEv.type==='time'?'rgba(0,155,191,.1)':'var(--surface)',color:newEv.type==='time'?'var(--metro-blue)':'var(--text)',border:'1px solid var(--border)',flex:1,padding:'7px'}} onClick={()=>setNewEv({...newEv,type:'time'})}>⏰ 時刻指定</button>
         </div>
         {newEv.type==='time'&&<input className="sinp sm" type="time" value={newEv.scheduledTime} onChange={e=>setNewEv({...newEv,scheduledTime:e.target.value})}/>}
         <button className="btn red" style={{marginTop:4}} onClick={()=>{if(!newEv.name)return;onAddEvent({...newEv,id:'e'+Date.now(),status:'pending',triggeredAt:null});setNewEv({name:'',desc:'',type:'manual',scheduledTime:'',reward:''});}}>＋ 追加</button>
@@ -1222,11 +1158,11 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
     </>}
     {tab==='scores'&&(gameState.teams||[]).map(t=>{
       const sc=calcScore(t,config);
-      return<div key={t.id} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:8}}>
+      return<div key={t.id} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:'10px 12px',marginBottom:8}}>
         <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4}}>
           <div className="dot" style={{background:t.color,width:10,height:10}}></div>
           <div style={{fontWeight:700,fontSize:14}}>{t.name}</div>
-          <div style={{marginLeft:'auto',fontFamily:'Bebas Neue',fontSize:22,color:'var(--gold)'}}>{sc.total}pt</div>
+          <div style={{marginLeft:'auto',fontFamily:'Barlow Condensed',fontSize:26,color:'var(--navy)'}}>{sc.total}pt</div>
         </div>
         <div style={{fontSize:10,color:'var(--muted)'}}>
           {config?.mode==='double'?`(${sc.stB}+1)×(${sc.msB}+1)=${sc.total}pt`:`マス${sc.masks} BINGO${sc.stB}列 計${sc.total}pt`}
@@ -1309,7 +1245,7 @@ function OrganizerSetup({onCreateGame,onBack}){
         <button className={`route-btn ${routeMode==='metro'?'sel':''}`} onClick={()=>setRouteMode('metro')}>🚇 メトロのみ</button>
         <button className={`route-btn ${routeMode==='full'?'sel':''}`} onClick={()=>setRouteMode('full')}>🚇 メトロ＋都営</button>
       </div>
-      <div style={{background:'var(--card2)',borderRadius:10,padding:'4px 14px',marginBottom:10}}>
+      <div style={{background:'var(--surface-sub)',borderRadius:18,padding:'4px 14px',marginBottom:10,border:'1px solid var(--border)'}}>
         <div className="custom-row">
           <span className="custom-label">プレイヤー数</span>
           <div className="num-input">
@@ -1337,7 +1273,7 @@ function OrganizerSetup({onCreateGame,onBack}){
       {gameMode==='double'&&<div style={{maxHeight:180,overflowY:'auto',marginBottom:10}}>
         {missions.map((m,i)=>(
           <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>setMissions(ms=>ms.map((mm,j)=>j===i?{...mm,enabled:!mm.enabled}:mm))}>
-            <div style={{width:18,height:18,borderRadius:4,background:m.enabled?'var(--green)':'var(--card2)',border:`1px solid ${m.enabled?'var(--green)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}}>
+            <div style={{width:18,height:18,borderRadius:4,background:m.enabled?'var(--green)':'var(--surface)',border:`1px solid ${m.enabled?'var(--green)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}}>
               {m.enabled&&<span style={{fontSize:10,color:'white'}}>✓</span>}
             </div>
             <span style={{fontSize:11}}>{m.icon} {m.text}</span>
@@ -1362,7 +1298,7 @@ function StartScreen({onOrganizer,onPlayer}){
   return<div className="center-overlay">
     <div className="modal">
       <div style={{textAlign:'center',marginBottom:20}}>
-        <div style={{fontFamily:'Bebas Neue',fontSize:40,letterSpacing:4,background:'linear-gradient(90deg,#e60012,#f68b1e,#f5c518)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',lineHeight:1.1,marginBottom:8}}>METRO RUN</div>
+        <div style={{fontFamily:'Barlow Condensed',fontSize:48,letterSpacing:4,color:'var(--metro-blue)',lineHeight:1.1,marginBottom:8}}>METRO RUN</div>
         <div style={{fontSize:11,color:'var(--muted)'}}>リアル移動型ビンゴゲーム</div>
       </div>
       <button className="btn pri" onClick={onOrganizer}>🎮 新しいゲームを作る（主催者）</button>
@@ -1768,10 +1704,10 @@ function App(){
     <div className="hdr">
       <div className="logo">METRO RUN</div>
       <div style={{display:'flex',alignItems:'center',gap:8}}>
-        {isAdmin&&<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:20,padding:'4px 10px',fontSize:10,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowShare(true)}>
+        {isAdmin&&<div style={{background:'var(--surface-sub)',border:'1px solid var(--border)',borderRadius:20,padding:'4px 10px',fontSize:10,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowShare(true)}>
           <span>招待コード</span><span style={{fontSize:9,color:'var(--muted)'}}>📤</span>
         </div>}
-        {myTeam&&<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:20,padding:'4px 10px',fontSize:10,display:'flex',alignItems:'center',gap:5}}>
+        {myTeam&&<div style={{background:'var(--surface-sub)',border:'1px solid var(--border)',borderRadius:20,padding:'4px 10px',fontSize:10,display:'flex',alignItems:'center',gap:5}}>
           <div className="dot" style={{background:myTeam.color}}></div>
           <span>{myTeam.name}</span>
         </div>}
@@ -1816,7 +1752,7 @@ function App(){
 
     <div className="cnt">
       {!isAdmin&&tab==='home'&&<div>
-        <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:12,padding:14,marginBottom:12}}>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:14,marginBottom:12}}>
           <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>{gameState.title}</div>
           <div style={{fontSize:11,color:'var(--muted)',lineHeight:1.8}}>
             状態: {gameState.state}<br/>
@@ -1826,11 +1762,11 @@ function App(){
           </div>
         </div>
         {currentParticipant?.status!=='assigned'||gameState.state!=='in_progress'
-          ?<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:12,padding:14}}>
+          ?<div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:14}}>
             <div style={{fontWeight:700,marginBottom:6}}>{currentParticipant?.status==='pending'?'承認待ち':gameState.state==='finished'?'大会は終了しました':'待機中'}</div>
             <div style={{fontSize:11,color:'var(--muted)',lineHeight:1.8}}>{gameState.state==='finished'?'スコアタブからリザルトを確認できます。':waitingMessage}</div>
           </div>
-          :<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:12,padding:14}}>
+          :<div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:18,padding:14}}>
             <div style={{fontWeight:700,marginBottom:6}}>ゲーム進行中</div>
             <div style={{fontSize:11,color:'var(--muted)',lineHeight:1.8}}>
               終盤になると相手チームの情報は自動で非表示になります。現在は {canViewOpponents?'表示中':'非表示'} です。
