@@ -738,7 +738,7 @@ function MetroBadge({line,code,size='md'}){
   return<span className={`metro-badge ${size==='sm'?'sm':''}`} style={{color:lineInfo?.color||'var(--accent)'}}>{code}</span>;
 }
 function MetroBadgeGroup({station,size='md'}){
-  const badges=(station?.badges&&station.badges.length)?station.badges:getStationBadges(station||{});
+  const badges=getStationBadges(station||{});
   if(!badges.length){
     return<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>;
   }
@@ -762,6 +762,14 @@ function createTeam(index,cfg,missions){
 function createTeams(count,cfg,missions){
   return Array.from({length:Math.max(2,count||2)},(_,i)=>createTeam(i,cfg,missions));
 }
+function normalizeStationCell(cell){
+  if(!cell)return cell;
+  if(cell.isFree||cell.id==='FREE')return {...cell,isFree:true,name:'FREE',badges:[]};
+  return{...cell,badges:getStationBadges(cell)};
+}
+function normalizeTeamCards(team){
+  return{...team,stationCard:(team.stationCard||[]).map(normalizeStationCell)};
+}
 function syncTeamsToCount(teams,count,cfg,missions){
   let next=[...(teams||[])];
   const target=Math.max(2,count||2);
@@ -777,7 +785,7 @@ function syncTeamsToCount(teams,count,cfg,missions){
 function hydrateTeamMembers(gameState){
   const participants=(gameState?.participants||[]).filter(p=>p.active!==false);
   const teams=(gameState?.teams||[]).map(team=>({
-    ...team,
+    ...normalizeTeamCards(team),
     memberIds:participants.filter(p=>p.teamId===team.id&&p.status==='assigned').map(p=>p.id),
   }));
   return {...gameState,teams};
