@@ -1383,6 +1383,16 @@ function Toast({toasts}){
   ))}</div>;
 }
 
+function exitGameSession({setGameState,setMyParticipantId,setIsAdmin,setScreen,setTab,setShowShare}){
+  clearSession();
+  setShowShare(false);
+  setGameState(null);
+  setMyParticipantId(null);
+  setIsAdmin(false);
+  setTab('home');
+  setScreen('start');
+}
+
 // ── MAIN APP ──
 function App(){
   const [screen,setScreen]=useState('start'); // start|organizer|player|admin|game
@@ -1615,11 +1625,11 @@ function App(){
   const handleLeaveGame=useCallback(async()=>{
     if(!currentParticipant)return;
     await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===currentParticipant.id?{...p,teamId:null,status:'joined',active:false}:p),teams:(gs.teams||[]).map(t=>t.id===currentParticipant.teamId?{...t,logs:[...(t.logs||[]),{type:'st',title:'プレイヤー離脱',sub:currentParticipant.name,time:nowTime()}]}:t)}));
-    clearSession();
-    setMyParticipantId(null);
-    setGameState(null);
-    setScreen('start');
+    exitGameSession({setGameState,setMyParticipantId,setIsAdmin,setScreen,setTab,setShowShare});
   },[currentParticipant,updateGame]);
+  const handleExitToStart=useCallback(()=>{
+    exitGameSession({setGameState,setMyParticipantId,setIsAdmin,setScreen,setTab,setShowShare});
+  },[]);
 
   // Timer
   const cfg=gameState?.config;
@@ -1789,6 +1799,10 @@ function App(){
         </div>)}
       </div>}
       {tab==='admin'&&gameState&&<AdminPage gameState={gameState} onFireEvent={handleFireEvent} onAddEvent={handleAddEvent} onApprove={handleApprove} onReject={handleReject} onApproveParticipant={handleApproveParticipant} onRejectParticipant={handleRejectParticipant} onAssignParticipant={handleAssignParticipant} onRenameTeam={handleRenameTeam} onSetTeamColor={handleSetTeamColor} onChangeGameState={handleChangeGameState} onAutoAssign={handleAutoAssign} onUpdateConfig={handleUpdateConfig} onAdjustScore={handleAdjustScore}/>}
+      {isAdmin&&<div style={{marginTop:18}}>
+        <button className="btn sec" onClick={handleExitToStart}>トップに戻る</button>
+        {gameState?.state==='finished'&&<button className="btn pri" onClick={handleExitToStart}>新しい大会を作る</button>}
+      </div>}
     </div>
   </div>;
 }
