@@ -305,6 +305,9 @@ function mergePhotos(code,s){
   if(r.pendingApprovals)r.pendingApprovals=r.pendingApprovals.map(a=>({...a,photo:a.photo==='__local__'?(p[`a_${a.id}`]||null):a.photo}));
   return r;
 }
+function saveSession(session){try{localStorage.setItem('metro_run_session',JSON.stringify(session))}catch(e){}}
+function loadSession(){try{return JSON.parse(localStorage.getItem('metro_run_session')||'null')}catch(e){return null}}
+function clearSession(){try{localStorage.removeItem('metro_run_session')}catch(e){}}
 async function fbSave(code,s){await _db.ref(`games_v6/${code}`).set(stripPhotos(s));savePhotos(code,s)}
 async function fbLoad(code){const snap=await _db.ref(`games_v6/${code}`).get();if(!snap.exists())return null;return mergePhotos(code,snap.val())}
 function fbSub(code,cb){const ref=_db.ref(`games_v6/${code}`);ref.on('value',snap=>{if(snap.exists())cb(mergePhotos(code,snap.val()))});return()=>ref.off('value')}
@@ -575,34 +578,167 @@ function calcScore(team,config){
   const stMasks=(team.stationReached||[]).filter(id=>id!=='FREE').length;
   const msMasks=(team.missionReached||[]).filter(id=>id!=='FREE').length;
   const mode=config?.mode||'basic';
-  const gp=team.goalPenalty||0;
+  const gp=(team.goalPenalty||0)+(team.manualScoreDelta||0);
   if(mode==='basic'){return{stB:stBingo.length,msB:0,masks:stMasks,total:stMasks+stBingo.length*3+gp}}
   const total=(stBingo.length+1)*(msBingo.length+1)+gp;
   return{stB:stBingo.length,msB:msBingo.length,masks:stMasks+msMasks,total};
 }
 function genCode(){return Math.random().toString(36).substr(2,6).toUpperCase()}
 function nowTime(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
-function initGame(teamName,teamColor,cfg,missions){
-  const code=genCode();
+function isoNow(){return new Date().toISOString()}
+function createParticipant(name,status='joined'){
+  const ts=Date.now();
+  const now=isoNow();
+  return{id:`p${ts}${Math.random().toString(36).slice(2,6)}`,name,joinedAt:now,status,teamId:null,active:true,nameHistory:[{name,changedAt:now}]};
+}
+function getParticipantTeam(participant,teams){return (teams||[]).find(t=>t.id===participant?.teamId)||null}
+function getParticipantCounts(gameState){
+  const active=(gameState?.participants||[]).filter(p=>p.active!==false);
   return{
-    gameCode:code,version:'v6',
+    pending:active.filter(p=>p.status==='pending'),
+    joined:active.filter(p=>p.status==='joined'),
+    assigned:active.filter(p=>p.status==='assigned'),
+    all:active,
+  };
+}
+function teamLabel(index){return `チーム${String.fromCharCode(65+index)}`}
+function createTeam(index,cfg,missions){
+  return{
+    id:`t${index+1}`,
+    name:teamLabel(index),
+    color:TEAM_COLORS[index%TEAM_COLORS.length],
+    stationCard:genStationCard(cfg.routeMode),
+    missionCard:cfg.mode==='double'?genMissionCard(missions):null,
+    stationReached:['FREE'],
+    missionReached:['FREE'],
+    missionSubmissions:{},
+    goalPenalty:0,
+    manualScoreDelta:0,
+    logs:[{type:'st',title:`${teamLabel(index)} を作成`,sub:'大会準備中',time:nowTime()}],
+  };
+}
+function createTeams(count,cfg,missions){
+  return Array.from({length:Math.max(2,count||2)},(_,i)=>createTeam(i,cfg,missions));
+}
+function syncTeamsToCount(teams,count,cfg,missions){
+  let next=[...(teams||[])];
+  const target=Math.max(2,count||2);
+  while(next.length<target)next=[...next,createTeam(next.length,cfg,missions)];
+  while(next.length>target){
+    const last=next[next.length-1];
+    const hasMembers=(last.memberIds||[]).length>0;
+    if(hasMembers)break;
+    next=next.slice(0,-1);
+  }
+  return next;
+}
+function hydrateTeamMembers(gameState){
+  const participants=(gameState?.participants||[]).filter(p=>p.active!==false);
+  const teams=(gameState?.teams||[]).map(team=>({
+    ...team,
+    memberIds:participants.filter(p=>p.teamId===team.id&&p.status==='assigned').map(p=>p.id),
+  }));
+  return {...gameState,teams};
+}
+function canJoinGame(gameState){
+  return ['recruiting','team_building'].includes(gameState?.state);
+}
+function canEditTeams(gameState){
+  return ['recruiting','team_building'].includes(gameState?.state);
+}
+function getStartBlockers(gameState){
+  const teams=gameState?.teams||[];
+  const counts=getParticipantCounts(gameState);
+  const assignedByTeam=teams.map(team=>counts.assigned.filter(p=>p.teamId===team.id).length);
+  const blockers=[];
+  if(teams.length<2)blockers.push('最低2チーム必要です');
+  if(assignedByTeam.some(count=>count===0))blockers.push('各チームに最低1人ずつ割り当ててください');
+  if(counts.joined.length>0)blockers.push('未割り当ての参加者がいます');
+  return blockers;
+}
+function canStartGame(gameState){return getStartBlockers(gameState).length===0}
+function autoAssignParticipants(gameState){
+  const teams=[...(gameState?.teams||[])];
+  const participants=[...(gameState?.participants||[])];
+  const unassigned=participants.filter(p=>p.active!==false&&p.status==='joined'&&!p.teamId);
+  const counts=teams.map(team=>participants.filter(p=>p.active!==false&&p.status==='assigned'&&p.teamId===team.id).length);
+  const sorted=teams.map((team,index)=>({team,index,count:counts[index]})).sort((a,b)=>a.count-b.count||a.index-b.index);
+  const nextParticipants=participants.map(p=>({...p}));
+  unassigned.forEach((participant,idx)=>{
+    const target=sorted[idx%sorted.length];
+    const ref=nextParticipants.find(p=>p.id===participant.id);
+    ref.teamId=target.team.id;
+    ref.status='assigned';
+    target.count+=1;
+    sorted.sort((a,b)=>a.count-b.count||a.index-b.index);
+  });
+  return hydrateTeamMembers({...gameState,participants:nextParticipants});
+}
+function buildRuleSummary(gameState){
+  const cfg=gameState?.config||{};
+  const lines=[
+    'トランプを1枚引き、出た数だけ上りか下りを選んで移動します。',
+    '路線の端まで来たら折り返します。',
+    '到着した駅は写真付きで記録してください。',
+    cfg.mode==='double'
+      ?'ダブルビンゴは駅ビンゴとミッションビンゴを同時進行します。'
+      :'ベーシックは駅ビンゴのみで進行します。',
+  ];
+  const diffRules=[
+    `大会名：${gameState?.title||'未設定'}`,
+    `開催状態：${gameState?.state||'recruiting'}`,
+    `スタート駅：${gameState?.startStationName||gameState?.startStationId||'未設定'}`,
+    `開始〜終了：${gameState?.startAt||'-'} 〜 ${gameState?.endAt||'-'}`,
+    gameState?.extras?.goalStation?`ゴール駅：${gameState.extras.goalStation}`:'ゴール駅：未設定',
+    gameState?.extras?.goalCondition?`ゴール条件：${gameState.extras.goalCondition}`:'ゴール条件：未設定',
+    gameState?.rules?.custom?`追加ルール：${gameState.rules.custom}`:'追加ルール：なし',
+  ];
+  return{common:lines,diff:diffRules};
+}
+function initGame(form,missions){
+  const cfg=form.config;
+  const teams=createTeams(cfg.teamCount, cfg, missions);
+  const code=genCode();
+  return hydrateTeamMembers({
+    gameCode:code,
+    version:'v7',
+    title:form.title,
+    state:'recruiting',
+    startAt:form.startAt,
+    endAt:form.endAt,
+    startedAt:null,
+    finishedAt:null,
+    startStationId:form.startStationId,
+    startStationName:form.startStationName,
+    organizer:{id:'org1'},
     config:{mode:cfg.mode,routeMode:cfg.routeMode,gameDuration:cfg.gameDuration||8*60*60*1000,
       goalEnabled:cfg.goalEnabled||false,goalAmount:cfg.goalAmount||-5,
-      teamCount:cfg.teamCount||2,teamSize:cfg.teamSize||3,version:'v6'},
+      teamCount:cfg.teamCount||2,playerLimit:cfg.playerLimit||8,version:'v7'},
+    extras:{
+      goalStation:form.goalStation||'',
+      goalCondition:form.goalCondition||'',
+      meetupPoint:form.meetupPoint||'',
+      meetupTime:form.meetupTime||'',
+      events:form.extraEvents||[],
+      timedEvents:form.timedEvents||[],
+      battleEvents:form.battleEvents||[],
+      retentionDays:null,
+    },
+    rules:{custom:form.customRules||''},
     missions:missions||DEFAULT_MISSIONS,
-    teams:[{id:'t1',name:teamName,color:teamColor,
-      stationCard:genStationCard(cfg.routeMode),
-      missionCard:cfg.mode==='double'?genMissionCard(missions):null,
-      stationReached:['FREE'],missionReached:['FREE'],
-      missionSubmissions:{},goalPenalty:0,
-      logs:[{type:'st',title:'ゲーム開始！',sub:'大手町駅からスタート',time:nowTime()}]}],
-    events:[],startedAt:Date.now(),pendingApprovals:[],
-  };
+    participants:[],
+    teams,
+    events:form.events||[],
+    pendingApprovals:[],
+    auditLogs:[{id:`audit_${Date.now()}`,type:'system',time:nowTime(),message:`大会「${form.title}」を作成`}],
+  });
 }
 
 // ── RULE SCREEN ──
-function RuleScreen({config,onStart}){
+function RuleScreen({gameState,onClose,requireConfirm=false}){
+  const config=gameState?.config;
   const mode=config?.mode||'basic';
+  const rules=buildRuleSummary(gameState);
   return<div className="rule-screen">
     <div className="rule-hero">
       <div className="rule-hero-title">METRO RUN</div>
@@ -610,14 +746,8 @@ function RuleScreen({config,onStart}){
     </div>
     <div className="rule-body">
       <div className="rule-card">
-        <div className="rule-card-title"><span>🃏</span>基本の動き方</div>
-        {[
-          'トランプを1枚引く',
-          '出た数の分だけ「上り」か「下り」を選んで移動する',
-          '路線の端まで来たら折り返す（すごろく形式）',
-          '到着した駅をアプリで報告し、写真を添付する',
-          'ビンゴの盤面にある駅ならマスが埋まる',
-        ].map((t,i)=><div key={i} className="rule-step">
+        <div className="rule-card-title"><span>🃏</span>共通ルール</div>
+        {rules.common.map((t,i)=><div key={i} className="rule-step">
           <div className="rule-step-num">{i+1}</div>
           <div className="rule-step-text">{t}</div>
         </div>)}
@@ -651,34 +781,32 @@ function RuleScreen({config,onStart}){
         </div>
       </div>}
       <div className="rule-card">
-        <div className="rule-card-title"><span>📝</span>注意事項</div>
-        {[
-          'チームが2つの場合はトランプが2セット必要です',
-          '駅の写真は駅名看板が写っているものを添付してください',
-          '同一駅の連続記録はできません',
-          '東京メトロのみ（または都営含む）が移動手段です',
-        ].map((t,i)=><div key={i} className="rule-check">
+        <div className="rule-card-title"><span>📝</span>大会ごとの差分ルール</div>
+        {rules.diff.map((t,i)=><div key={i} className="rule-check">
           <div className="rule-check-icon" style={{color:'var(--orange)'}}>!</div>
           <div className="rule-check-text">{t}</div>
         </div>)}
       </div>
     </div>
     <div className="rule-footer">
-      <button className="btn pri" style={{marginTop:0}} onClick={onStart}>
-        ルールを確認しました　ゲームスタート →
+      <button className="btn pri" style={{marginTop:0}} onClick={onClose}>
+        {requireConfirm?'ルールを確認しました':'閉じる'}
       </button>
     </div>
   </div>;
 }
 
 // ── BINGO PAGE ──
-function BingoPage({gameState,myTeamId,config}){
+function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetails}){
   const mode=config?.mode||'basic';
   const [bingoView,setBingoView]=useState('station');
   const [viewTeamId,setViewTeamId]=useState(myTeamId);
   const teams=gameState.teams||[];
   const viewTeam=teams.find(t=>t.id===viewTeamId)||teams[0];
   const isMyTeam=viewTeamId===myTeamId;
+  useEffect(()=>{
+    if(!canViewOpponents&&viewTeamId!==myTeamId)setViewTeamId(myTeamId);
+  },[canViewOpponents,myTeamId,viewTeamId]);
   const stR=useMemo(()=>new Set(viewTeam?.stationReached||[]),[viewTeam?.stationReached]);
   const msR=useMemo(()=>new Set(viewTeam?.missionReached||[]),[viewTeam?.missionReached]);
   const stB=useMemo(()=>checkBingo(viewTeam?.stationCard,stR),[viewTeam?.stationCard,stR]);
@@ -690,7 +818,7 @@ function BingoPage({gameState,myTeamId,config}){
 
   return<div>
     {/* チーム切り替え */}
-    {teams.length>1&&<div className="team-tabs">
+    {teams.length>1&&canViewOpponents&&<div className="team-tabs">
       {teams.map(t=>(
         <button key={t.id} className={`team-tab ${viewTeamId===t.id?'on':''}`}
           style={viewTeamId===t.id?{borderColor:t.color,color:t.color}:{}}
@@ -703,6 +831,9 @@ function BingoPage({gameState,myTeamId,config}){
 
     {!isMyTeam&&<div style={{background:'rgba(143,118,214,.1)',border:'1px solid var(--purple)',borderRadius:8,padding:'7px 12px',marginBottom:10,fontSize:11,color:'var(--purple)'}}>
       👁 {viewTeam?.name} のビンゴを閲覧中
+    </div>}
+    {!canViewOpponents&&<div style={{background:'rgba(246,139,30,.1)',border:'1px solid var(--orange)',borderRadius:8,padding:'7px 12px',marginBottom:10,fontSize:11,color:'var(--orange)'}}>
+      終盤のため相手チームの状況は非表示です
     </div>}
 
     {mode==='double'&&<div className="btabs">
@@ -738,21 +869,37 @@ function BingoPage({gameState,myTeamId,config}){
     <div style={{marginTop:12}}>
       {mode==='double'?
         <div className="multiply-display">
-          <div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>{isMyTeam?'現在のスコア':'観戦中チームのスコア'}</div>
-          <div className="multiply-formula">({viewScore.stB}+1) × ({viewScore.msB}+1) = {viewScore.total}</div>
+          <div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>{isMyTeam?'現在のスコア':'観戦中チームの状況'}</div>
+          <div className="multiply-formula">{isMyTeam?`(${viewScore.stB}+1) × (${viewScore.msB}+1) = ${viewScore.total}`:'BINGO / LOG'}</div>
           <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>
-            {isMyTeam?'両方バランスよく取るほど高得点！':`${viewTeam?.name} の進捗を観戦できます`}
+            {isMyTeam?'両方バランスよく取るほど高得点！':`${viewTeam?.name} のビンゴ盤面とログを表示中`}
           </div>
         </div>:
         <div className="score-detail">
-          <div className="score-row"><span className="lbl">マス数</span><span className="val">{viewScore.masks}pt</span></div>
+          {isMyTeam||showOpponentDetails?<><div className="score-row"><span className="lbl">マス数</span><span className="val">{viewScore.masks}pt</span></div>
           <div className="score-row"><span className="lbl">ビンゴ（{viewScore.stB}列×3pt）</span><span className="val">{viewScore.stB*3}pt</span></div>
-          <div className="score-row"><span>合計</span><span className="val" style={{fontSize:20}}>{viewScore.total}pt</span></div>
+          <div className="score-row"><span>合計</span><span className="val" style={{fontSize:20}}>{viewScore.total}pt</span></div></>
+          :<div style={{fontSize:11,color:'var(--muted)',textAlign:'center'}}>相手チームの数値スコアは非表示です</div>}
         </div>}
-      {!isMyTeam&&mode==='double'&&<div style={{fontSize:10,color:'var(--muted)',marginTop:8,textAlign:'center'}}>
+      {!isMyTeam&&mode==='double'&&showOpponentDetails&&<div style={{fontSize:10,color:'var(--muted)',marginTop:8,textAlign:'center'}}>
         自チームの現在スコア: {myScore.total}
       </div>}
     </div>
+
+    {(!isMyTeam&&canViewOpponents)||isMyTeam?<div style={{marginTop:12}}>
+      <p className="sec">ログ</p>
+      {(viewTeam?.logs||[]).length===0?<div className="empty">ログはまだありません</div>:<div>{[...(viewTeam?.logs||[])].slice(-8).reverse().map((log,i)=>(
+        <div key={i} className="li">
+          <div className={`lic ${log.type}`}>{log.type==='s'?'📍':log.type==='bingo'?'🎯':log.type==='ms'?'🏅':log.type==='ev'?'⚡':'📝'}</div>
+          <div className="lb">
+            <div className="lt">{log.title}</div>
+            <div className="ls">{log.sub}</div>
+            {log.photo&&<img src={log.photo} style={{width:'100%',maxHeight:70,objectFit:'cover',borderRadius:5,marginTop:5}} alt=""/>}
+          </div>
+          <div className="ltm">{log.time}</div>
+        </div>
+      ))}</div>}
+    </div>:null}
   </div>;
 }
 
@@ -861,70 +1008,147 @@ function MissionPage({team,onSubmitMission}){
 }
 
 // ── SCORE PAGE ──
-function ScorePage({gameState,myTeamId}){
+function ScorePage({gameState,myTeamId,isFinished}){
   const config=gameState.config;const mode=config?.mode||'basic';
-  const teams=[...(gameState.teams||[])].map(t=>({...t,...calcScore(t,config)})).sort((a,b)=>b.total-a.total);
-  const rankCls=['g','s','b'];const myTeam=teams.find(t=>t.id===myTeamId);
-  return<div>
-    <div className="rank">
-      <div className="rh">RANKING</div>
-      {teams.map((t,i)=>(
-        <div key={t.id} className={`rrow ${t.id===myTeamId?'me':''}`}>
-          <div className={`rn ${rankCls[i]||''}`}>{i+1}</div>
-          <div className="rt">
-            <div className="rtn"><div className="dot" style={{background:t.color,width:9,height:9}}></div>{t.name}{t.id===myTeamId?' 👈':''}</div>
-            <div className="rtd">{mode==='double'?`駅${t.stB}列・ミッション${t.msB}列`:`${t.masks}マス・BINGO${t.stB}列`}</div>
-          </div>
-          <div className="rs">{t.total}</div>
-        </div>
-      ))}
-    </div>
-    {myTeam&&<>
-      <p className="sec">得点内訳</p>
-      {mode==='double'?<div className="multiply-display">
-        <div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>スコア計算式</div>
-        <div className="multiply-formula">({myTeam.stB}+1)×({myTeam.msB}+1)={myTeam.total}</div>
-      </div>:<div className="score-detail">
-        <div className="score-row"><span className="lbl">マス（{myTeam.masks}×1pt）</span><span className="val">{myTeam.masks}pt</span></div>
-        <div className="score-row"><span className="lbl">ビンゴ（{myTeam.stB}列×3pt）</span><span className="val">{myTeam.stB*3}pt</span></div>
-        <div className="score-row"><span>合計</span><span className="val" style={{fontSize:22}}>{myTeam.total}pt</span></div>
-      </div>}
-      <p className="sec">プレイログ</p>
-      <div>{[...(myTeam.logs||[])].reverse().map((log,i)=>(
+  const teams=[...(gameState.teams||[])].map(t=>({...t,...calcScore(t,config)}));
+  const myTeam=teams.find(t=>t.id===myTeamId);
+  const renderBoard=(team)=>(
+    <div key={team.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:12,padding:12,marginBottom:12}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+        <div className="dot" style={{background:team.color,width:10,height:10}}></div>
+        <div style={{fontWeight:700}}>{team.name}</div>
+        <div style={{marginLeft:'auto',fontFamily:'Bebas Neue',fontSize:22,color:'var(--gold)'}}>{team.total}pt</div>
+      </div>
+      <div className="bgrid" style={{marginBottom:8}}>
+        {(team.stationCard||[]).map((cell,i)=>{
+          const hit=cell.isFree||(team.stationReached||[]).includes(cell.id);
+          return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''}`}>
+            <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
+          </div>;
+        })}
+      </div>
+      <div>{[...(team.logs||[])].slice(-6).reverse().map((log,i)=>(
         <div key={i} className="li">
-          <div className={`lic ${log.type}`}>{log.type==='s'?'📍':log.type==='bingo'?'🎯':log.type==='ms'?'🏅':log.type==='ev'?'⚡':'🚀'}</div>
-          <div className="lb"><div className="lt">{log.title}</div><div className="ls">{log.sub}</div>
-            {log.photo&&<img src={log.photo} style={{width:'100%',maxHeight:70,objectFit:'cover',borderRadius:5,marginTop:5}} alt=""/>}
-          </div>
+          <div className={`lic ${log.type}`}>{log.type==='s'?'📍':log.type==='bingo'?'🎯':log.type==='ms'?'🏅':log.type==='ev'?'⚡':'📝'}</div>
+          <div className="lb"><div className="lt">{log.title}</div><div className="ls">{log.sub}</div></div>
           <div className="ltm">{log.time}</div>
         </div>
       ))}</div>
-    </>}
+    </div>
+  );
+  if(isFinished)return<div>
+    <p className="sec">終了後リザルト</p>
+    {teams.map(renderBoard)}
+  </div>;
+  if(!myTeam)return<div className="empty">チームに割り当てられるとスコアが表示されます</div>;
+  return<div>
+    <p className="sec">得点内訳</p>
+    {mode==='double'?<div className="multiply-display">
+      <div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>スコア計算式</div>
+      <div className="multiply-formula">({myTeam.stB}+1)×({myTeam.msB}+1)={myTeam.total}</div>
+    </div>:<div className="score-detail">
+      <div className="score-row"><span className="lbl">マス（{myTeam.masks}×1pt）</span><span className="val">{myTeam.masks}pt</span></div>
+      <div className="score-row"><span className="lbl">ビンゴ（{myTeam.stB}列×3pt）</span><span className="val">{myTeam.stB*3}pt</span></div>
+      <div className="score-row"><span>合計</span><span className="val" style={{fontSize:22}}>{myTeam.total}pt</span></div>
+    </div>}
+    <p className="sec">プレイログ</p>
+    <div>{[...(myTeam.logs||[])].reverse().map((log,i)=>(
+      <div key={i} className="li">
+        <div className={`lic ${log.type}`}>{log.type==='s'?'📍':log.type==='bingo'?'🎯':log.type==='ms'?'🏅':log.type==='ev'?'⚡':'📝'}</div>
+        <div className="lb"><div className="lt">{log.title}</div><div className="ls">{log.sub}</div>
+          {log.photo&&<img src={log.photo} style={{width:'100%',maxHeight:70,objectFit:'cover',borderRadius:5,marginTop:5}} alt=""/>}
+        </div>
+        <div className="ltm">{log.time}</div>
+      </div>
+    ))}</div>
   </div>;
 }
 
 // ── ADMIN PAGE ──
-function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject}){
-  const [tab,setTab]=useState('approval');
+function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApproveParticipant,onRejectParticipant,onAssignParticipant,onRenameTeam,onSetTeamColor,onChangeGameState,onAutoAssign,onUpdateConfig,onAdjustScore}){
+  const [tab,setTab]=useState('participants');
   const [newEv,setNewEv]=useState({name:'',desc:'',type:'manual',scheduledTime:'',reward:''});
   const config=gameState.config;
-  const pCount=(gameState.pendingApprovals||[]).length;
+  const participantCounts=getParticipantCounts(gameState);
+  const startBlockers=getStartBlockers(gameState);
+  const stateLabels={recruiting:'募集中',team_building:'編成中',in_progress:'進行中',finished:'終了'};
   return<div>
     <div style={{background:'rgba(230,0,18,.1)',border:'1px solid var(--red)',borderRadius:8,padding:'8px 12px',marginBottom:10,fontSize:11,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
       <span style={{fontWeight:700,color:'var(--red)'}}>🔒 運営モード</span>
       <span style={{fontFamily:'Bebas Neue',fontSize:15,color:'var(--yellow)',letterSpacing:2}}>{gameState.gameCode}</span>
-      <span className="chip cyan">{config?.mode==='double'?'ダブル':'ベーシック'}</span>
-      <span className="chip cyan">{config?.routeMode==='full'?'全路線':'メトロ'}</span>
+      <span className="chip cyan">{gameState.title}</span>
+      <span className="chip cyan">{stateLabels[gameState.state]}</span>
+      <span className="chip cyan">参加 {participantCounts.all.length}/{config?.playerLimit||0}</span>
+    </div>
+    <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:12,marginBottom:12}}>
+      <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>大会状態</div>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:8}}>
+        {['recruiting','team_building','finished'].map(state=>(
+          <button key={state} className="lbtn" style={{background:gameState.state===state?'rgba(255,255,255,.15)':'var(--card2)',color:'#e8eaf0',border:'1px solid var(--border)'}} onClick={()=>onChangeGameState(state)}>{stateLabels[state]}</button>
+        ))}
+        <button className="lbtn" style={{background:canStartGame(gameState)?'rgba(0,166,80,.2)':'var(--card2)',color:canStartGame(gameState)?'var(--green)':'var(--muted)',border:'1px solid var(--border)'}} disabled={!canStartGame(gameState)} onClick={()=>onChangeGameState('in_progress')}>ゲーム開始</button>
+      </div>
+      {startBlockers.length>0&&<div style={{fontSize:10,color:'var(--orange)',lineHeight:1.7}}>
+        {startBlockers.map((msg,i)=><div key={i}>・{msg}</div>)}
+      </div>}
     </div>
     <div className="admin-tabs">
-      <button className={`admin-tab ${tab==='approval'?'on':''}`} onClick={()=>setTab('approval')}>
-        承認待ち {pCount>0&&<span className="badge badge-pend" style={{marginLeft:4}}>{pCount}</span>}
-      </button>
+      <button className={`admin-tab ${tab==='participants'?'on':''}`} onClick={()=>setTab('participants')}>参加者</button>
+      <button className={`admin-tab ${tab==='approval'?'on':''}`} onClick={()=>setTab('approval')}>承認待ち</button>
+      <button className={`admin-tab ${tab==='teams'?'on':''}`} onClick={()=>setTab('teams')}>チーム</button>
       <button className={`admin-tab ${tab==='events'?'on':''}`} onClick={()=>setTab('events')}>イベント</button>
       <button className={`admin-tab ${tab==='scores'?'on':''}`} onClick={()=>setTab('scores')}>スコア</button>
     </div>
+    {tab==='participants'&&<>
+      <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:12,marginBottom:10}}>
+        <div className="custom-row">
+          <span className="custom-label">プレイヤー上限</span>
+          <div className="num-input">
+            <button className="num-btn" onClick={()=>onUpdateConfig({playerLimit:Math.max(1,(config?.playerLimit||1)-1)})}>−</button>
+            <span className="custom-value">{config?.playerLimit||0}人</span>
+            <button className="num-btn" onClick={()=>onUpdateConfig({playerLimit:(config?.playerLimit||0)+1})}>+</button>
+          </div>
+        </div>
+        <div className="custom-row">
+          <span className="custom-label">チーム数</span>
+          <div className="num-input">
+            <button className="num-btn" onClick={()=>onUpdateConfig({teamCount:Math.max(2,(config?.teamCount||2)-1)})}>−</button>
+            <span className="custom-value">{gameState.teams?.length||0}チーム</span>
+            <button className="num-btn" onClick={()=>onUpdateConfig({teamCount:(config?.teamCount||0)+1})}>+</button>
+          </div>
+        </div>
+        <button className="btn sec" style={{marginTop:8}} onClick={onAutoAssign}>未割り当てを自動振り分け</button>
+      </div>
+      {(gameState.participants||[]).filter(p=>p.active!==false&&p.status!=='pending').map(participant=>{
+        const team=getParticipantTeam(participant,gameState.teams);
+        return<div key={participant.id} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:10,marginBottom:8}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+            <div style={{fontWeight:700,fontSize:13}}>{participant.name}</div>
+            <span className="chip cyan">{participant.status==='assigned'?'割り当て済み':'未割り当て'}</span>
+          </div>
+          <div style={{fontSize:10,color:'var(--muted)',marginBottom:6}}>参加: {participant.joinedAt}</div>
+          <select className="sinp sm" value={participant.teamId||''} onChange={e=>onAssignParticipant(participant.id,e.target.value||null)}>
+            <option value="">未割り当て</option>
+            {(gameState.teams||[]).map(teamOption=><option key={teamOption.id} value={teamOption.id}>{teamOption.name}</option>)}
+          </select>
+          {team&&<div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>現在: {team.name}</div>}
+        </div>;
+      })}
+    </>}
     {tab==='approval'&&<>
-      {pCount===0?<div className="empty">承認待ちはありません</div>:(gameState.pendingApprovals||[]).map((appr,i)=>{
+      <p className="sec">参加承認</p>
+      {participantCounts.pending.length===0?<div className="empty">承認待ちの参加者はいません</div>:participantCounts.pending.map(participant=>(
+        <div key={participant.id} className="appr-item">
+          <div style={{fontWeight:700,fontSize:12,marginBottom:4}}>{participant.name}</div>
+          <div style={{fontSize:10,color:'var(--muted)',marginBottom:8}}>申請時刻: {participant.joinedAt}</div>
+          <div className="appr-btns">
+            <button className="appr-btn appr-ok" onClick={()=>onApproveParticipant(participant.id)}>✓ 参加承認</button>
+            <button className="appr-btn appr-ng" onClick={()=>onRejectParticipant(participant.id)}>✗ 拒否</button>
+          </div>
+        </div>
+      ))}
+      <p className="sec">ミッション承認</p>
+      {(gameState.pendingApprovals||[]).length===0?<div className="empty">ミッション承認待ちはありません</div>:(gameState.pendingApprovals||[]).map((appr,i)=>{
         const team=(gameState.teams||[]).find(t=>t.id===appr.teamId);
         const missions=gameState.missions||DEFAULT_MISSIONS;
         const mission=missions.find(m=>m.id===appr.missionId);
@@ -940,6 +1164,25 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject}){
           <div className="appr-btns">
             <button className="appr-btn appr-ok" onClick={()=>onApprove(appr)}>✓ 承認</button>
             <button className="appr-btn appr-ng" onClick={()=>onReject(appr)}>✗ 却下</button>
+          </div>
+        </div>;
+      })}
+    </>}
+    {tab==='teams'&&<>
+      {(gameState.teams||[]).map(team=>{
+        const memberCount=(team.memberIds||[]).length;
+        return<div key={team.id} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:12,marginBottom:8}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+            <div className="dot" style={{background:team.color,width:10,height:10}}></div>
+            <input className="sinp sm" style={{margin:0,flex:1}} value={team.name} onChange={e=>onRenameTeam(team.id,e.target.value)}/>
+            <span style={{fontSize:10,color:'var(--muted)'}}>{memberCount}人</span>
+          </div>
+          <div className="color-row" style={{marginBottom:8}}>{TEAM_COLORS.map(c=><div key={c} className={`cswatch ${team.color===c?'sel':''}`} style={{background:c}} onClick={()=>onSetTeamColor(team.id,c)}></div>)}</div>
+          <div style={{fontSize:11,fontWeight:700,marginBottom:6}}>手動スコア補正</div>
+          <div style={{display:'flex',gap:6}}>
+            <button className="lbtn" style={{background:'var(--card)',color:'#e8eaf0',border:'1px solid var(--border)'}} onClick={()=>onAdjustScore(team.id,-1)}>-1</button>
+            <button className="lbtn" style={{background:'var(--card)',color:'#e8eaf0',border:'1px solid var(--border)'}} onClick={()=>onAdjustScore(team.id,1)}>+1</button>
+            <span style={{fontSize:10,color:'var(--muted)',display:'flex',alignItems:'center'}}>現在 {team.manualScoreDelta||0}pt</span>
           </div>
         </div>;
       })}
@@ -995,149 +1238,121 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject}){
 
 // ── ORGANIZER SETUP ──
 function OrganizerSetup({onCreateGame,onBack}){
-  const [step,setStep]=useState(0); // 0:mode 1:customize 2:missions 3:events
+  const now=new Date();
+  const plusHours=new Date(now.getTime()+8*60*60*1000);
   const [gameMode,setGameMode]=useState('double');
   const [routeMode,setRouteMode]=useState('metro');
-  const [hours,setHours]=useState(8);
+  const [title,setTitle]=useState('');
+  const [startAt,setStartAt]=useState(now.toISOString().slice(0,16));
+  const [endAt,setEndAt]=useState(plusHours.toISOString().slice(0,16));
+  const [startStationId,setStartStationId]=useState('otemachi');
+  const [playerLimit,setPlayerLimit]=useState(8);
   const [teamCount,setTeamCount]=useState(2);
-  const [teamSize,setTeamSize]=useState(3);
   const [goalEnabled,setGoalEnabled]=useState(false);
   const [missions,setMissions]=useState(DEFAULT_MISSIONS.map(m=>({...m,enabled:true})));
-  const [customMission,setCustomMission]=useState('');
   const [events,setEvents]=useState([
     {id:'e1',name:'ライブ会場キャパ対決',desc:'午前中に最大収容人数のライブ会場を発見！13:00に合流して発表',type:'time',scheduledTime:'13:00',reward:'任意1マス',status:'pending',triggeredAt:null},
   ]);
-  const [newEv,setNewEv]=useState({name:'',scheduledTime:'',reward:'',type:'time'});
-  const [teamName,setTeamName]=useState('');
-  const [teamColor,setTeamColor]=useState(TEAM_COLORS[0]);
+  const [goalStation,setGoalStation]=useState('');
+  const [goalCondition,setGoalCondition]=useState('');
+  const [meetupPoint,setMeetupPoint]=useState('');
+  const [meetupTime,setMeetupTime]=useState('');
+  const [customRules,setCustomRules]=useState('');
   const [loading,setLoading]=useState(false);
 
-  const steps=['モード','カスタマイズ','ミッション','チーム'];
   const enabledMissions=missions.filter(m=>m.enabled);
+  const startPool=getPool(routeMode);
 
   const handleCreate=async()=>{
-    if(!teamName.trim())return;
+    if(!title.trim()||!startAt||!endAt||!startStationId)return;
     setLoading(true);
-    const cfg={mode:gameMode,routeMode,gameDuration:hours*60*60*1000,
-      teamCount,teamSize,goalEnabled,goalAmount:goalEnabled?-5:0};
-    await onCreateGame(teamName.trim(),teamColor,cfg,enabledMissions,events);
+    const cfg={mode:gameMode,routeMode,gameDuration:Math.max(1,new Date(endAt)-new Date(startAt)),
+      teamCount,playerLimit,goalEnabled,goalAmount:goalEnabled?-5:0};
+    const station=startPool.find(s=>s.id===startStationId);
+    await onCreateGame({
+      title:title.trim(),
+      startAt,
+      endAt,
+      startStationId,
+      startStationName:station?.name||startStationId,
+      goalStation,
+      goalCondition,
+      meetupPoint,
+      meetupTime,
+      customRules,
+      config:cfg,
+      events,
+    },enabledMissions);
     setLoading(false);
   };
 
   return<div className="center-overlay" style={{alignItems:'flex-start',paddingTop:20}}>
     <div className="modal">
-      {/* 戻るボタン */}
-      <button className="btn ghost" style={{marginTop:0,marginBottom:8,textAlign:'left',width:'auto',padding:'4px 0'}} onClick={step===0?onBack:()=>setStep(s=>s-1)}>
-        ← {step===0?'トップに戻る':'戻る'}
-      </button>
-
-      {/* ステップ */}
-      <div className="step-indicator">
-        {steps.map((s,i)=><div key={i} className={`step-dot ${i===step?'active':i<step?'done':''}`}/>)}
+      <button className="btn ghost" style={{marginTop:0,marginBottom:8,textAlign:'left',width:'auto',padding:'4px 0'}} onClick={onBack}>← トップに戻る</button>
+      <div className="modal-title">大会を作成</div>
+      <input className="modal-input left" placeholder="大会名" value={title} onChange={e=>setTitle(e.target.value)}/>
+      <div style={{fontSize:11,color:'var(--muted)',marginBottom:4}}>開始時刻</div>
+      <input className="sinp" type="datetime-local" value={startAt} onChange={e=>setStartAt(e.target.value)}/>
+      <div style={{fontSize:11,color:'var(--muted)',marginBottom:4}}>終了時刻</div>
+      <input className="sinp" type="datetime-local" value={endAt} onChange={e=>setEndAt(e.target.value)}/>
+      <div style={{fontSize:11,color:'var(--muted)',marginBottom:4}}>スタート駅</div>
+      <select className="sinp" value={startStationId} onChange={e=>setStartStationId(e.target.value)}>
+        {startPool.map(st=><option key={st.id} value={st.id}>{st.name}</option>)}
+      </select>
+      <div className="mode-card" style={{borderColor:gameMode==='basic'?'var(--cyan)':'var(--border)'}} onClick={()=>setGameMode('basic')}>
+        <div className="mode-card-title">🎰 ベーシック</div>
       </div>
-      <div className="step-label">{steps[step]}</div>
-
-      {/* STEP 0: モード選択 */}
-      {step===0&&<>
-        <div className="modal-title">ゲームモードを選ぶ</div>
-        <div className="mode-card sel basic" style={{borderColor:gameMode==='basic'?'var(--cyan)':'var(--border)'}} onClick={()=>setGameMode('basic')}>
-          <div className="mode-card-title">🎰 ベーシック {gameMode==='basic'&&<span style={{fontSize:10,color:'var(--cyan)'}}>✓</span>}</div>
-          <div className="mode-card-desc">駅ビンゴのみ。スコア＝マス数＋ビンゴ列数×3<br/>初めてのプレイヤーにおすすめ</div>
-        </div>
-        <div className="mode-card" style={{borderColor:gameMode==='double'?'var(--purple)':'var(--border)'}} onClick={()=>setGameMode('double')}>
-          <div className="mode-card-title">🎯 ダブルビンゴ {gameMode==='double'&&<span style={{fontSize:10,color:'var(--purple)'}}>✓</span>}</div>
-          <div className="mode-card-desc">駅＋ミッションビンゴ。スコア＝(駅列+1)×(ミッション列+1)<br/>両方バランスよく進めると高得点</div>
-        </div>
-        <p className="sec">路線範囲</p>
-        <div className="route-row">
-          <button className={`route-btn ${routeMode==='metro'?'sel':''}`} onClick={()=>setRouteMode('metro')}>🚇 メトロのみ</button>
-          <button className={`route-btn ${routeMode==='full'?'sel':''}`} onClick={()=>setRouteMode('full')}>🚇 メトロ＋都営</button>
-        </div>
-        <button className="btn pri" onClick={()=>setStep(1)}>次へ →</button>
-      </>}
-
-      {/* STEP 1: カスタマイズ */}
-      {step===1&&<>
-        <div className="modal-title">ゲームをカスタマイズ</div>
-        <div style={{background:'var(--card2)',borderRadius:10,padding:'4px 14px',marginBottom:10}}>
-          <div className="custom-row">
-            <span className="custom-label">プレイ時間</span>
-            <div className="num-input">
-              <button className="num-btn" onClick={()=>setHours(h=>Math.max(1,h-1))}>−</button>
-              <span className="custom-value">{hours}時間</span>
-              <button className="num-btn" onClick={()=>setHours(h=>Math.min(12,h+1))}>+</button>
-            </div>
-          </div>
-          <div className="custom-row">
-            <span className="custom-label">チーム数</span>
-            <div className="num-input">
-              <button className="num-btn" onClick={()=>setTeamCount(n=>Math.max(2,n-1))}>−</button>
-              <span className="custom-value">{teamCount}チーム</span>
-              <button className="num-btn" onClick={()=>setTeamCount(n=>Math.min(6,n+1))}>+</button>
-            </div>
-          </div>
-          <div className="custom-row">
-            <span className="custom-label">1チームの人数</span>
-            <div className="num-input">
-              <button className="num-btn" onClick={()=>setTeamSize(n=>Math.max(1,n-1))}>−</button>
-              <span className="custom-value">{teamSize}人</span>
-              <button className="num-btn" onClick={()=>setTeamSize(n=>Math.min(6,n+1))}>+</button>
-            </div>
-          </div>
-          <div className="custom-row">
-            <span className="custom-label">ゴールペナルティ</span>
-            <div className="toggle-row">
-              <div className={`toggle ${goalEnabled?'on':''}`} onClick={()=>setGoalEnabled(v=>!v)}></div>
-              <span style={{fontSize:11,color:goalEnabled?'var(--green)':'var(--muted)'}}>{goalEnabled?'ON（-5pt）':'OFF'}</span>
-            </div>
+      <div className="mode-card" style={{borderColor:gameMode==='double'?'var(--purple)':'var(--border)'}} onClick={()=>setGameMode('double')}>
+        <div className="mode-card-title">🎯 ダブルビンゴ</div>
+      </div>
+      <div className="route-row">
+        <button className={`route-btn ${routeMode==='metro'?'sel':''}`} onClick={()=>setRouteMode('metro')}>🚇 メトロのみ</button>
+        <button className={`route-btn ${routeMode==='full'?'sel':''}`} onClick={()=>setRouteMode('full')}>🚇 メトロ＋都営</button>
+      </div>
+      <div style={{background:'var(--card2)',borderRadius:10,padding:'4px 14px',marginBottom:10}}>
+        <div className="custom-row">
+          <span className="custom-label">プレイヤー数</span>
+          <div className="num-input">
+            <button className="num-btn" onClick={()=>setPlayerLimit(n=>Math.max(1,n-1))}>−</button>
+            <span className="custom-value">{playerLimit}人</span>
+            <button className="num-btn" onClick={()=>setPlayerLimit(n=>n+1)}>+</button>
           </div>
         </div>
-        <div style={{fontSize:10,color:'var(--muted)',marginBottom:12,lineHeight:1.6}}>
-          ※ 係数カスタマイズはProプランでアンロック予定
+        <div className="custom-row">
+          <span className="custom-label">チーム数</span>
+          <div className="num-input">
+            <button className="num-btn" onClick={()=>setTeamCount(n=>Math.max(2,n-1))}>−</button>
+            <span className="custom-value">{teamCount}チーム</span>
+            <button className="num-btn" onClick={()=>setTeamCount(n=>n+1)}>+</button>
+          </div>
         </div>
-        <button className="btn pri" onClick={()=>setStep(gameMode==='double'?2:3)}>次へ →</button>
-      </>}
-
-      {/* STEP 2: ミッション（ダブルのみ） */}
-      {step===2&&gameMode==='double'&&<>
-        <div className="modal-title">ミッションを設定</div>
-        <div style={{fontSize:11,color:'var(--muted)',marginBottom:10}}>使用するミッションを選択（{enabledMissions.length}個選択中）</div>
-        <div style={{maxHeight:260,overflowY:'auto',marginBottom:10}}>
-          {missions.map((m,i)=>(
-            <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>setMissions(ms=>ms.map((mm,j)=>j===i?{...mm,enabled:!mm.enabled}:mm))}>
-              <div style={{width:18,height:18,borderRadius:4,background:m.enabled?'var(--green)':'var(--card2)',border:`1px solid ${m.enabled?'var(--green)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}}>
-                {m.enabled&&<span style={{fontSize:10,color:'white'}}>✓</span>}
-              </div>
-              <span style={{fontSize:11}}>{m.icon} {m.text}</span>
+        <div className="custom-row">
+          <span className="custom-label">ゴールペナルティ</span>
+          <div className="toggle-row">
+            <div className={`toggle ${goalEnabled?'on':''}`} onClick={()=>setGoalEnabled(v=>!v)}></div>
+            <span style={{fontSize:11,color:goalEnabled?'var(--green)':'var(--muted)'}}>{goalEnabled?'ON（-5pt）':'OFF'}</span>
+          </div>
+        </div>
+      </div>
+      {gameMode==='double'&&<div style={{maxHeight:180,overflowY:'auto',marginBottom:10}}>
+        {missions.map((m,i)=>(
+          <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>setMissions(ms=>ms.map((mm,j)=>j===i?{...mm,enabled:!mm.enabled}:mm))}>
+            <div style={{width:18,height:18,borderRadius:4,background:m.enabled?'var(--green)':'var(--card2)',border:`1px solid ${m.enabled?'var(--green)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}}>
+              {m.enabled&&<span style={{fontSize:10,color:'white'}}>✓</span>}
             </div>
-          ))}
-        </div>
-        <div style={{display:'flex',gap:6,marginBottom:10}}>
-          <input className="sinp sm" placeholder="オリジナルミッションを追加..." value={customMission} onChange={e=>setCustomMission(e.target.value)} style={{flex:1,margin:0}}/>
-          <button className="lbtn" style={{background:'var(--card2)',color:'#e8eaf0',border:'1px solid var(--border)',padding:'7px 12px',flexShrink:0}} onClick={()=>{if(!customMission.trim())return;const id='mc'+Date.now();setMissions(ms=>[...ms,{id,text:customMission.trim(),evidence:'写真',icon:'📌',enabled:true}]);setCustomMission('');}}>＋</button>
-        </div>
-        <button className="btn pri" onClick={()=>setStep(3)}>次へ →</button>
-      </>}
-
-      {/* STEP 3: チーム設定＋コード発行 */}
-      {step===3&&<>
-        <div className="modal-title">最初のチームを設定</div>
-        <div style={{fontSize:11,color:'var(--muted)',marginBottom:12,lineHeight:1.6}}>
-          ゲームコードを発行します。他のチームはコードを入力して参加します。
-        </div>
-        <input className="modal-input left" placeholder="チーム名を入力..." value={teamName} onChange={e=>setTeamName(e.target.value)}/>
-        <div style={{fontSize:11,color:'var(--muted)',marginBottom:8}}>チームカラー</div>
-        <div className="color-row">{TEAM_COLORS.map(c=><div key={c} className={`cswatch ${teamColor===c?'sel':''}`} style={{background:c}} onClick={()=>setTeamColor(c)}></div>)}</div>
-        {/* 設定サマリー */}
-        <div style={{background:'var(--card2)',borderRadius:8,padding:'10px 12px',marginTop:4,marginBottom:4,fontSize:11,color:'var(--muted)',lineHeight:2}}>
-          モード：{gameMode==='double'?'ダブルビンゴ':'ベーシック'} ／ 路線：{routeMode==='full'?'メトロ＋都営':'メトロのみ'}<br/>
-          時間：{hours}時間 ／ チーム：{teamCount}チーム×{teamSize}人<br/>
-          {gameMode==='double'&&`ミッション：${enabledMissions.length}個`}
-        </div>
-        <button className="btn pri" disabled={loading||!teamName.trim()} onClick={handleCreate}>
-          {loading?'作成中...':'🚀 ゲームコードを発行する'}
-        </button>
-      </>}
+            <span style={{fontSize:11}}>{m.icon} {m.text}</span>
+          </div>
+        ))}
+      </div>}
+      <p className="sec">将来拡張用の任意項目</p>
+      <input className="sinp sm" placeholder="ゴール駅" value={goalStation} onChange={e=>setGoalStation(e.target.value)}/>
+      <input className="sinp sm" placeholder="ゴール条件" value={goalCondition} onChange={e=>setGoalCondition(e.target.value)}/>
+      <input className="sinp sm" placeholder="合流地点" value={meetupPoint} onChange={e=>setMeetupPoint(e.target.value)}/>
+      <input className="sinp sm" placeholder="合流時間" value={meetupTime} onChange={e=>setMeetupTime(e.target.value)}/>
+      <textarea className="sinp" placeholder="大会ごとの差分ルール" value={customRules} onChange={e=>setCustomRules(e.target.value)} style={{minHeight:80}}/>
+      <button className="btn pri" disabled={loading||!title.trim()||!startAt||!endAt||!startStationId} onClick={handleCreate}>
+        {loading?'作成中...':'🚀 ゲームコードを発行する'}
+      </button>
     </div>
   </div>;
 }
@@ -1159,8 +1374,7 @@ function StartScreen({onOrganizer,onPlayer}){
 // ── PLAYER JOIN ──
 function PlayerJoin({onJoin,onBack}){
   const [code,setCode]=useState('');
-  const [teamName,setTeamName]=useState('');
-  const [color,setColor]=useState(TEAM_COLORS[1]);
+  const [playerName,setPlayerName]=useState('');
   const [err,setErr]=useState('');
   const [loading,setLoading]=useState(false);
   return<div className="center-overlay">
@@ -1169,14 +1383,13 @@ function PlayerJoin({onJoin,onBack}){
       <div className="modal-title">ゲームに参加</div>
       <div style={{fontSize:11,color:'var(--muted)',marginBottom:5}}>主催者から共有されたコードを入力</div>
       <input className="modal-input" placeholder="XXXXXX" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} maxLength={6}/>
-      <input className="modal-input left" placeholder="チーム名を入力..." value={teamName} onChange={e=>setTeamName(e.target.value)} style={{marginBottom:8}}/>
-      <div style={{fontSize:11,color:'var(--muted)',marginBottom:8}}>チームカラー</div>
-      <div className="color-row">{TEAM_COLORS.map(c=><div key={c} className={`cswatch ${color===c?'sel':''}`} style={{background:c}} onClick={()=>setColor(c)}></div>)}</div>
+      <input className="modal-input left" placeholder="プレイヤー名を入力..." value={playerName} onChange={e=>setPlayerName(e.target.value)} style={{marginBottom:8}}/>
       {err&&<div style={{fontSize:11,color:'var(--red)',marginBottom:8}}>{err}</div>}
       <button className="btn pri" disabled={loading} onClick={async()=>{
-        if(!code.trim()||!teamName.trim()){setErr('コードとチーム名を入力してください');return}
-        setLoading(true);const ok=await onJoin(code.trim().toUpperCase(),teamName.trim(),color);
-        setLoading(false);if(!ok)setErr('ゲームが見つかりません。コードを確認してください');
+        if(!code.trim()||!playerName.trim()){setErr('コードとプレイヤー名を入力してください');return}
+        setLoading(true);const result=await onJoin(code.trim().toUpperCase(),playerName.trim());
+        setLoading(false);
+        if(result!==true)setErr(result||'参加に失敗しました');
       }}>{loading?'参加中...':'参加する'}</button>
     </div>
   </div>;
@@ -1207,7 +1420,7 @@ function ShareModal({gameCode,config,onClose}){
   const copy=()=>{if(navigator.clipboard)navigator.clipboard.writeText(gameCode).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
   return<div className="center-overlay" onClick={onClose}>
     <div className="modal" onClick={e=>e.stopPropagation()}>
-      <div className="modal-title">チームを招待する</div>
+      <div className="modal-title">参加者を招待する</div>
       <div className="code-display">
         <div className="code-big">{gameCode}</div>
         <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>このコードを仲間に共有してください</div>
@@ -1238,30 +1451,38 @@ function Toast({toasts}){
 function App(){
   const [screen,setScreen]=useState('start'); // start|organizer|player|admin|game
   const [gameState,setGameState]=useState(null);
-  const [myTeamId,setMyTeamId]=useState(null);
+  const [myParticipantId,setMyParticipantId]=useState(null);
   const [isAdmin,setIsAdmin]=useState(false);
   const [showRule,setShowRule]=useState(false);
-  const [ruleConfirmed,setRuleConfirmed]=useState(false);
-  const [tab,setTab]=useState('bingo');
+  const [tab,setTab]=useState('home');
   const [toasts,setToasts]=useState([]);
   const [showShare,setShowShare]=useState(false);
   const [nowTs,setNowTs]=useState(Date.now());
+  const [sessionReady,setSessionReady]=useState(false);
   const unsubRef=useRef(null);
 
   useEffect(()=>{
     const iv=setInterval(()=>{
       setNowTs(Date.now());
-      // timed events
       setGameState(prev=>{
         if(!prev)return prev;
-        const t=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
         let changed=false;
-        const events=(prev.events||[]).map(ev=>{
+        let next={...prev};
+        const t=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+        const events=(next.events||[]).map(ev=>{
           if(ev.type==='time'&&ev.status==='pending'&&ev.scheduledTime===t){changed=true;return{...ev,status:'active',triggeredAt:Date.now()}}
           return ev;
         });
+        if(changed){
+          const activated=events.filter(ev=>ev.type==='time'&&ev.status==='active'&&!(next.events||[]).find(prevEv=>prevEv.id===ev.id&&prevEv.status==='active'));
+          next={...next,events,teams:(next.teams||[]).map(team=>({...team,logs:[...(team.logs||[]),...activated.map(ev=>({type:'ev',title:'イベント自動発動',sub:ev.name,time:nowTime()}))]}))};
+        }
+        if(next.state==='in_progress'&&next.endAt&&Date.now()>=new Date(next.endAt).getTime()){
+          changed=true;
+          next={...next,state:'finished',finishedAt:isoNow(),auditLogs:[...(next.auditLogs||[]),{id:`audit_${Date.now()}`,type:'system',time:nowTime(),message:'大会を自動終了'}]};
+        }
         if(!changed)return prev;
-        const gs={...prev,events};fbSave(gs.gameCode,gs);return gs;
+        const gs=hydrateTeamMembers(next);fbSave(gs.gameCode,gs);return gs;
       });
     },1000);
     return()=>clearInterval(iv);
@@ -1276,47 +1497,84 @@ function App(){
   const subGame=useCallback((code)=>{
     if(unsubRef.current)unsubRef.current();
     unsubRef.current=fbSub(code,ns=>{
+      const hydrated=hydrateTeamMembers(ns);
       setGameState(prev=>{
-        const hasNewActive=(ns.events||[]).find(e=>e.status==='active'&&!(prev?.events||[]).find(pe=>pe.id===e.id&&pe.status==='active'));
+        const hasNewActive=(hydrated.events||[]).find(e=>e.status==='active'&&!(prev?.events||[]).find(pe=>pe.id===e.id&&pe.status==='active'));
         if(hasNewActive)showToast({type:'ev',emoji:'⚡',title:'イベント発動！',sub:hasNewActive.name});
-        return ns;
+        return hydrated;
       });
     });
   },[showToast]);
 
-  const handleCreateGame=useCallback(async(teamName,teamColor,cfg,missions,events)=>{
-    const gs=initGame(teamName,teamColor,cfg,missions);
-    gs.events=events||[];
+  useEffect(()=>{
+    let mounted=true;
+    (async()=>{
+      const session=loadSession();
+      if(!session?.code){if(mounted)setSessionReady(true);return;}
+      const gsRaw=await fbLoad(session.code);
+      const gs=gsRaw?hydrateTeamMembers(gsRaw):null;
+      if(!mounted){return;}
+      if(!gs){clearSession();setSessionReady(true);return;}
+      if(session.isAdmin){
+        setGameState(gs);setIsAdmin(true);setScreen('game');setTab('admin');subGame(session.code);setSessionReady(true);return;
+      }
+      const participant=(gs.participants||[]).find(p=>p.id===session.participantId&&p.active!==false);
+      if(participant){
+        setGameState(gs);setMyParticipantId(participant.id);setIsAdmin(false);setScreen('game');setTab('home');subGame(session.code);
+      }else{
+        clearSession();
+      }
+      setSessionReady(true);
+    })();
+    return()=>{mounted=false};
+  },[subGame]);
+
+  const handleCreateGame=useCallback(async(form,missions)=>{
+    const gs=initGame(form,missions);
     await fbSave(gs.gameCode,gs);
-    setGameState(gs);setMyTeamId('t1');setScreen('game');setIsAdmin(false);
+    setGameState(gs);setMyParticipantId(null);setScreen('game');setIsAdmin(true);setTab('admin');
+    saveSession({code:gs.gameCode,isAdmin:true});
     subGame(gs.gameCode);
-    setShowRule(true); // 新規プレイヤーにルール表示
     setTimeout(()=>setShowShare(true),100);
   },[subGame]);
 
-  const handleJoinGame=useCallback(async(code,teamName,teamColor,asAdmin=false)=>{
-    const gs=await fbLoad(code);
+  const handleJoinGame=useCallback(async(code,playerName,_unused,asAdmin=false)=>{
+    const gsRaw=await fbLoad(code);
+    const gs=gsRaw?hydrateTeamMembers(gsRaw):null;
     if(!gs)return false;
-    if(asAdmin){setGameState(gs);setIsAdmin(true);setTab('admin');setScreen('game');subGame(code);return true;}
-    const newId='t'+Date.now();
-    const cfg=gs.config||{mode:'basic',routeMode:'metro'};
-    const newTeam={id:newId,name:teamName,color:teamColor,
-      stationCard:genStationCard(cfg.routeMode),
-      missionCard:cfg.mode==='double'?genMissionCard(gs.missions):null,
-      stationReached:['FREE'],missionReached:['FREE'],missionSubmissions:{},goalPenalty:0,
-      logs:[{type:'st',title:'ゲーム参加！',sub:`チーム「${teamName}」で参加`,time:nowTime()}]};
-    const updated={...gs,teams:[...gs.teams,newTeam]};
+    if(asAdmin){setGameState(gs);setIsAdmin(true);setTab('admin');setScreen('game');saveSession({code,isAdmin:true});subGame(code);return true;}
+    if(!canJoinGame(gs))return '現在は新規参加を受け付けていません';
+    const dup=(gs.participants||[]).find(p=>p.active!==false&&p.name===playerName);
+    if(dup)return '同じ名前の参加者がすでにいます';
+    const activeJoined=(gs.participants||[]).filter(p=>p.active!==false&&p.status!=='pending').length;
+    const status=activeJoined>=(gs.config?.playerLimit||0)?'pending':'joined';
+    const participant=createParticipant(playerName,status);
+    const updated=hydrateTeamMembers({...gs,participants:[...(gs.participants||[]),participant],auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'participant',time:nowTime(),message:`${playerName} が ${status==='pending'?'承認待ち':'参加'} で登録`} ]});
     await fbSave(code,updated);
-    setGameState(updated);setMyTeamId(newId);setScreen('game');setIsAdmin(false);
+    setGameState(updated);setMyParticipantId(participant.id);setScreen('game');setIsAdmin(false);setTab('home');
+    saveSession({code,participantId:participant.id,isAdmin:false});
     subGame(code);
-    setShowRule(true); // ルール確認
     return true;
   },[subGame]);
 
-  const save=useCallback(async(newGs)=>{await fbSave(newGs.gameCode,newGs);setGameState(newGs);},[]);
+  const save=useCallback(async(newGs)=>{
+    const hydrated=hydrateTeamMembers(newGs);
+    await fbSave(hydrated.gameCode,hydrated);
+    setGameState(hydrated);
+  },[]);
+
+  const updateGame=useCallback(async(updater)=>{
+    if(!gameState)return;
+    const next=typeof updater==='function'?updater(gameState):updater;
+    await save(next);
+  },[gameState,save]);
+
+  const currentParticipant=(gameState?.participants||[]).find(p=>p.id===myParticipantId&&p.active!==false)||null;
+  const myTeamId=currentParticipant?.teamId||null;
+  const myTeam=gameState?.teams.find(t=>t.id===myTeamId)||null;
 
   const handleArrive=useCallback(async(station,photo)=>{
-    if(!myTeamId||!gameState)return;
+    if(!myTeamId||!gameState||gameState.state!=='in_progress')return;
     const myTeam=gameState.teams.find(t=>t.id===myTeamId);
     if(!myTeam||(myTeam.stationReached||[]).includes(station.id)){showToast({type:'warn',emoji:'⚠️',title:'既に記録済みです',sub:station.name});return;}
     const newReached=[...(myTeam.stationReached||[]),station.id];
@@ -1338,7 +1596,7 @@ function App(){
   },[myTeamId,gameState,showToast,save]);
 
   const handleMissionSubmit=useCallback(async(missionId,photo,note)=>{
-    if(!myTeamId||!gameState)return;
+    if(!myTeamId||!gameState||gameState.state!=='in_progress')return;
     const appr={id:'a'+Date.now(),teamId:myTeamId,missionId,photo,note,time:nowTime()};
     const updatedTeams=gameState.teams.map(t=>{if(t.id!==myTeamId)return t;return{...t,missionSubmissions:{...(t.missionSubmissions||{}),[missionId]:'pending'}};});
     await save({...gameState,teams:updatedTeams,pendingApprovals:[...(gameState.pendingApprovals||[]),appr]});
@@ -1369,39 +1627,105 @@ function App(){
   const handleFireEvent=useCallback(async(evId,action='start')=>{
     const events=(gameState.events||[]).map(ev=>{if(ev.id!==evId)return ev;return action==='end'?{...ev,status:'done'}:{...ev,status:'active',triggeredAt:Date.now()};});
     if(action==='start'){const ev=(gameState.events||[]).find(e=>e.id===evId);if(ev)showToast({type:'ev',emoji:'⚡',title:'イベント発動！',sub:ev.name});}
-    await save({...gameState,events});
+    const target=(gameState.events||[]).find(e=>e.id===evId);
+    const teams=(gameState.teams||[]).map(team=>({...team,logs:[...(team.logs||[]),target?{type:'ev',title:action==='end'?'イベント終了':'イベント発動',sub:target.name,time:nowTime()}:null].filter(Boolean)}));
+    await save({...gameState,events,teams});
   },[gameState,showToast,save]);
 
   const handleAddEvent=useCallback(async(ev)=>{await save({...gameState,events:[...(gameState.events||[]),ev]});},[gameState,save]);
+  const handleApproveParticipant=useCallback(async(participantId)=>{
+    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===participantId?{...p,status:'joined'}:p),auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'participant',time:nowTime(),message:'参加申請を承認'}]}));
+  },[updateGame]);
+  const handleRejectParticipant=useCallback(async(participantId)=>{
+    await updateGame(gs=>({...gs,participants:(gs.participants||[]).filter(p=>p.id!==participantId),auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'participant',time:nowTime(),message:'参加申請を拒否'}]}));
+  },[updateGame]);
+  const handleAssignParticipant=useCallback(async(participantId,teamId)=>{
+    if(!gameState||!canEditTeams(gameState))return;
+    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===participantId?{...p,teamId,status:teamId?'assigned':'joined'}:p),auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'participant',time:nowTime(),message:'チーム編成を更新'}]}));
+  },[gameState,updateGame]);
+  const handleRenameTeam=useCallback(async(teamId,name)=>{
+    await updateGame(gs=>({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?{...t,name:name||t.name,logs:[...(t.logs||[]),{type:'st',title:'チーム名変更',sub:name||t.name,time:nowTime()}]}:t)}));
+  },[updateGame]);
+  const handleSetTeamColor=useCallback(async(teamId,color)=>{
+    await updateGame(gs=>({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?{...t,color,logs:[...(t.logs||[]),{type:'st',title:'チームカラー変更',sub:color,time:nowTime()}]}:t)}));
+  },[updateGame]);
+  const handleChangeGameState=useCallback(async(nextState)=>{
+    await updateGame(gs=>{
+      if(nextState==='in_progress'&&!canStartGame(gs))return gs;
+      const startedAt=nextState==='in_progress'&&!gs.startedAt?Date.now():gs.startedAt;
+      return{...gs,state:nextState,startedAt,finishedAt:nextState==='finished'?isoNow():gs.finishedAt,auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'state',time:nowTime(),message:`大会状態を ${nextState} に変更`} ]};
+    });
+    if(nextState==='in_progress')setTab('bingo');
+  },[updateGame]);
+  const handleAutoAssign=useCallback(async()=>{if(!gameState||!canEditTeams(gameState))return;await updateGame(gs=>autoAssignParticipants(gs));},[gameState,updateGame]);
+  const handleUpdateConfig=useCallback(async(partial)=>{
+    await updateGame(gs=>{
+      const config={...(gs.config||{}),...partial};
+      const teams=syncTeamsToCount(gs.teams,config.teamCount,config,gs.missions);
+      return hydrateTeamMembers({...gs,config,teams});
+    });
+  },[updateGame]);
+  const handleAdjustScore=useCallback(async(teamId,delta)=>{
+    await updateGame(gs=>({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?{...t,manualScoreDelta:(t.manualScoreDelta||0)+delta,logs:[...(t.logs||[]),{type:'st',title:'スコア手動修正',sub:`${delta>0?'+':''}${delta}pt`,time:nowTime()}]}:t),auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'score',time:nowTime(),message:`スコア手動修正 ${delta>0?'+':''}${delta}pt`}]}));
+  },[updateGame]);
+  const handleRenameSelf=useCallback(async(name)=>{
+    if(!currentParticipant||!name.trim())return;
+    const trimmed=name.trim();
+    const dup=(gameState?.participants||[]).find(p=>p.active!==false&&p.id!==currentParticipant.id&&p.name===trimmed);
+    if(dup){showToast({type:'warn',emoji:'⚠️',title:'同じ名前は使えません',sub:''});return;}
+    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===currentParticipant.id?{...p,name:trimmed,nameHistory:[...(p.nameHistory||[]),{name:trimmed,changedAt:isoNow()}]}:p),teams:(gs.teams||[]).map(t=>t.id===currentParticipant.teamId?{...t,logs:[...(t.logs||[]),{type:'st',title:'プレイヤー名変更',sub:`${currentParticipant.name} → ${trimmed}`,time:nowTime()}]}:t)}));
+    showToast({type:'ok',emoji:'📝',title:'名前を変更しました',sub:trimmed});
+  },[currentParticipant,gameState,showToast,updateGame]);
+  const handleLeaveGame=useCallback(async()=>{
+    if(!currentParticipant)return;
+    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===currentParticipant.id?{...p,teamId:null,status:'joined',active:false}:p),teams:(gs.teams||[]).map(t=>t.id===currentParticipant.teamId?{...t,logs:[...(t.logs||[]),{type:'st',title:'プレイヤー離脱',sub:currentParticipant.name,time:nowTime()}]}:t)}));
+    clearSession();
+    setMyParticipantId(null);
+    setGameState(null);
+    setScreen('start');
+  },[currentParticipant,updateGame]);
 
   // Timer
   const cfg=gameState?.config;
-  const gameDur=cfg?.gameDuration||8*60*60*1000;
-  const remaining=gameState?Math.max(0,gameDur-(nowTs-gameState.startedAt)):0;
+  const gameDur=gameState?.startAt&&gameState?.endAt?Math.max(1,new Date(gameState.endAt)-new Date(gameState.startAt)):(cfg?.gameDuration||8*60*60*1000);
+  const remaining=gameState?.endAt?Math.max(0,new Date(gameState.endAt)-nowTs):0;
   const rH=Math.floor(remaining/3600000);
   const rM=Math.floor((remaining%3600000)/60000);
   const rS=Math.floor((remaining%60000)/1000);
   const timerStr=`${rH}:${String(rM).padStart(2,'0')}:${String(rS).padStart(2,'0')}`;
   const isEnding=remaining<30*60*1000;
-  const myTeam=gameState?.teams.find(t=>t.id===myTeamId);
   const score=myTeam?calcScore(myTeam,cfg):{total:0,stB:0,msB:0,masks:0};
   const activeEvents=(gameState?.events||[]).filter(e=>e.status==='active');
-  const pCount=(gameState?.pendingApprovals||[]).length;
+  const participantCounts=getParticipantCounts(gameState);
+  const pCount=(gameState?.pendingApprovals||[]).length+participantCounts.pending.length;
   const mode=cfg?.mode||'basic';
-
-  const playerTabs=mode==='double'
-    ?[{id:'bingo',icon:'🎰',label:'ビンゴ'},{id:'arrival',icon:'📍',label:'到着'},{id:'mission',icon:'🎯',label:'ミッション'},{id:'score',icon:'🏆',label:'スコア'}]
-    :[{id:'bingo',icon:'🎰',label:'ビンゴ'},{id:'arrival',icon:'📍',label:'到着'},{id:'score',icon:'🏆',label:'スコア'}];
-
-  // ルール確認画面
-  if(screen==='game'&&!isAdmin&&showRule&&!ruleConfirmed){
-    return<>
-      <Toast toasts={toasts}/>
-      <RuleScreen config={cfg} onStart={()=>{setRuleConfirmed(true);setShowRule(false);}}/>
-    </>;
+  const progressRatio=gameDur?remaining/gameDur:1;
+  const canViewOpponents=(gameState?.state==='finished')||progressRatio>=0.25;
+  const showOpponentDetails=gameState?.state==='finished'||isAdmin;
+  const canOpenPlayTabs=(myTeam&&gameState?.state==='in_progress'&&currentParticipant?.status==='assigned');
+  let playerTabs;
+  if(gameState?.state==='finished'){
+    playerTabs=[{id:'home',icon:'🏠',label:'ホーム'},{id:'score',icon:'🏆',label:'スコア'},{id:'profile',icon:'👤',label:'参加者'}];
+  }else if(canOpenPlayTabs){
+    playerTabs=mode==='double'
+      ?[{id:'home',icon:'🏠',label:'ホーム'},{id:'bingo',icon:'🎰',label:'ビンゴ'},{id:'arrival',icon:'📍',label:'到着'},{id:'mission',icon:'🎯',label:'ミッション'},{id:'score',icon:'🏆',label:'スコア'},{id:'profile',icon:'👤',label:'参加者'}]
+      :[{id:'home',icon:'🏠',label:'ホーム'},{id:'bingo',icon:'🎰',label:'ビンゴ'},{id:'arrival',icon:'📍',label:'到着'},{id:'score',icon:'🏆',label:'スコア'},{id:'profile',icon:'👤',label:'参加者'}];
+  }else{
+    playerTabs=[{id:'home',icon:'🏠',label:'ホーム'},{id:'profile',icon:'👤',label:'参加者'}];
   }
 
+  useEffect(()=>{
+    if(showRule)return;
+    if(isAdmin&&tab!=='admin')setTab('admin');
+    if(!isAdmin&&tab==='admin')setTab('home');
+  },[isAdmin,showRule,tab]);
+  useEffect(()=>{
+    if(isAdmin)return;
+    if(!playerTabs.find(item=>item.id===tab))setTab('home');
+  },[isAdmin,playerTabs,tab]);
+
   // スタート画面
+  if(!sessionReady)return<div className="loading"><div className="spinner"></div><div style={{fontSize:12,color:'var(--muted)'}}>セッションを確認しています...</div></div>;
   if(screen==='start')return<>
     <Toast toasts={toasts}/>
     <StartScreen onOrganizer={()=>setScreen('organizer')} onPlayer={()=>setScreen('player')}/>
@@ -1425,6 +1749,17 @@ function App(){
     <AdminJoin onJoin={handleJoinGame} onBack={()=>setScreen('start')}/>
   </>;
 
+  if(showRule&&gameState)return<>
+    <Toast toasts={toasts}/>
+    <RuleScreen gameState={gameState} onClose={()=>setShowRule(false)} requireConfirm={false}/>
+  </>;
+
+  const waitingMessage=currentParticipant?.status==='pending'
+    ?'主催者の承認待ちです。承認されるまでこの画面のままお待ちください。'
+    :currentParticipant?.status==='joined'
+      ?'チーム編成中です。主催者がチームを割り当てるまでお待ちください。'
+      :'ホームを表示中です。';
+
   // ゲーム画面
   return<div className="wrap">
     <Toast toasts={toasts}/>
@@ -1433,11 +1768,14 @@ function App(){
     <div className="hdr">
       <div className="logo">METRO RUN</div>
       <div style={{display:'flex',alignItems:'center',gap:8}}>
-        {myTeam&&<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:20,padding:'4px 10px',fontSize:10,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowShare(true)}>
+        {isAdmin&&<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:20,padding:'4px 10px',fontSize:10,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowShare(true)}>
+          <span>招待コード</span><span style={{fontSize:9,color:'var(--muted)'}}>📤</span>
+        </div>}
+        {myTeam&&<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:20,padding:'4px 10px',fontSize:10,display:'flex',alignItems:'center',gap:5}}>
           <div className="dot" style={{background:myTeam.color}}></div>
           <span>{myTeam.name}</span>
-          <span style={{fontSize:9,color:'var(--muted)'}}>📤</span>
         </div>}
+        <button className="btn ghost" style={{fontSize:10,color:'var(--muted)',padding:'4px 8px',margin:0,width:'auto'}} onClick={()=>setShowRule(true)}>📘 ルール</button>
         {!isAdmin&&<div style={{textAlign:'right'}}>
           <div style={{fontSize:9,color:'var(--muted)'}}>残り</div>
           <div className={`timer ${isEnding?'end':''}`}>{timerStr}</div>
@@ -1448,7 +1786,7 @@ function App(){
       </div>
     </div>
 
-    {!isAdmin&&<div className="sbar">
+    {!isAdmin&&myTeam&&gameState?.state==='in_progress'&&<div className="sbar">
       <div className="si"><div className="sl">SCORE</div><div className="sv">{score.total}</div></div>
       {mode==='double'
         ?<><div className="si"><div className="sl">駅BINGO</div><div className="sv b">{score.stB}</div></div>
@@ -1477,11 +1815,44 @@ function App(){
     </div>
 
     <div className="cnt">
-      {tab==='bingo'&&gameState&&<BingoPage gameState={gameState} myTeamId={myTeamId} config={cfg}/>}
-      {tab==='arrival'&&myTeam&&<ArrivalPage team={myTeam} config={cfg} onArrive={handleArrive}/>}
-      {tab==='mission'&&myTeam&&mode==='double'&&<MissionPage team={myTeam} onSubmitMission={handleMissionSubmit}/>}
-      {tab==='score'&&gameState&&<ScorePage gameState={gameState} myTeamId={myTeamId}/>}
-      {tab==='admin'&&gameState&&<AdminPage gameState={gameState} onFireEvent={handleFireEvent} onAddEvent={handleAddEvent} onApprove={handleApprove} onReject={handleReject}/>}
+      {!isAdmin&&tab==='home'&&<div>
+        <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:12,padding:14,marginBottom:12}}>
+          <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>{gameState.title}</div>
+          <div style={{fontSize:11,color:'var(--muted)',lineHeight:1.8}}>
+            状態: {gameState.state}<br/>
+            参加者: {currentParticipant?.name||'未参加'}<br/>
+            {myTeam?`所属チーム: ${myTeam.name}`:'所属チーム: 未割り当て'}<br/>
+            スタート駅: {gameState.startStationName||gameState.startStationId}
+          </div>
+        </div>
+        {currentParticipant?.status!=='assigned'||gameState.state!=='in_progress'
+          ?<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:12,padding:14}}>
+            <div style={{fontWeight:700,marginBottom:6}}>{currentParticipant?.status==='pending'?'承認待ち':gameState.state==='finished'?'大会は終了しました':'待機中'}</div>
+            <div style={{fontSize:11,color:'var(--muted)',lineHeight:1.8}}>{gameState.state==='finished'?'スコアタブからリザルトを確認できます。':waitingMessage}</div>
+          </div>
+          :<div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:12,padding:14}}>
+            <div style={{fontWeight:700,marginBottom:6}}>ゲーム進行中</div>
+            <div style={{fontSize:11,color:'var(--muted)',lineHeight:1.8}}>
+              終盤になると相手チームの情報は自動で非表示になります。現在は {canViewOpponents?'表示中':'非表示'} です。
+            </div>
+          </div>}
+      </div>}
+      {tab==='bingo'&&gameState&&myTeam&&<BingoPage gameState={gameState} myTeamId={myTeamId} config={cfg} canViewOpponents={canViewOpponents} showOpponentDetails={showOpponentDetails}/>}
+      {tab==='arrival'&&myTeam&&gameState.state==='in_progress'&&<ArrivalPage team={myTeam} config={cfg} onArrive={handleArrive}/>}
+      {tab==='mission'&&myTeam&&mode==='double'&&gameState.state==='in_progress'&&<MissionPage team={myTeam} onSubmitMission={handleMissionSubmit}/>}
+      {tab==='score'&&gameState&&<ScorePage gameState={gameState} myTeamId={myTeamId} isFinished={gameState.state==='finished'}/>}
+      {tab==='profile'&&!isAdmin&&currentParticipant&&<div>
+        <p className="sec">参加者情報</p>
+        <input className="sinp" value={currentParticipant.name} onChange={e=>setGameState(gs=>gs?{...gs,participants:(gs.participants||[]).map(p=>p.id===currentParticipant.id?{...p,name:e.target.value}:p)}:gs)}/>
+        <button className="btn pri" onClick={()=>handleRenameSelf((gameState?.participants||[]).find(p=>p.id===currentParticipant.id)?.name||currentParticipant.name)}>名前を更新</button>
+        <button className="btn red" onClick={handleLeaveGame}>大会から離脱する</button>
+        <p className="sec">名前変更履歴</p>
+        {(currentParticipant.nameHistory||[]).slice().reverse().map((item,i)=><div key={i} className="li">
+          <div className="lic st">📝</div>
+          <div className="lb"><div className="lt">{item.name}</div><div className="ls">{item.changedAt}</div></div>
+        </div>)}
+      </div>}
+      {tab==='admin'&&gameState&&<AdminPage gameState={gameState} onFireEvent={handleFireEvent} onAddEvent={handleAddEvent} onApprove={handleApprove} onReject={handleReject} onApproveParticipant={handleApproveParticipant} onRejectParticipant={handleRejectParticipant} onAssignParticipant={handleAssignParticipant} onRenameTeam={handleRenameTeam} onSetTeamColor={handleSetTeamColor} onChangeGameState={handleChangeGameState} onAutoAssign={handleAutoAssign} onUpdateConfig={handleUpdateConfig} onAdjustScore={handleAdjustScore}/>}
     </div>
   </div>;
 }
