@@ -467,17 +467,69 @@ const DEFAULT_MISSIONS=[
 ];
 
 // ── HELPERS ──
-function getPool(routeMode){return routeMode==='full'?[...ALL_STATIONS,...TOEI_STATIONS]:ALL_STATIONS}
-function genStationCard(routeMode='metro'){
+const STATION_CARD_TARGETS={1:4,2:12,3:4};
+const FIXED_CORNER_COUNT=2;
+const RANDOM_CORNER_COUNT=2;
+function shuffle(list){return [...list].sort(()=>Math.random()-.5)}
+function withStationMeta(st,routeMode){
+  return{
+    ...st,
+    difficulty:st.diff,
+    isFixedCornerCandidate:!!st.fixed,
+    availableRouteModes:st.op==='toei'?['full']:['metro','full'],
+    routeMode,
+  };
+}
+function getPool(routeMode){
+  const base=routeMode==='full'?[...ALL_STATIONS,...TOEI_STATIONS]:ALL_STATIONS;
+  return base.map(st=>withStationMeta(st,routeMode));
+}
+function pickStations(pool,count){
+  return shuffle(pool).slice(0,Math.max(0,count));
+}
+function buildStationPools(routeMode='metro'){
   const pool=getPool(routeMode);
-  const fixed=pool.filter(s=>s.fixed);
-  const diff3=pool.filter(s=>s.diff===3&&!s.fixed);
-  const others=pool.filter(s=>s.diff!==3||s.fixed);
-  const fixedCorner=[...fixed].sort(()=>Math.random()-.5).slice(0,2);
-  const randCorner=[...diff3].sort(()=>Math.random()-.5).slice(0,2);
-  const corners=[...fixedCorner,...randCorner].sort(()=>Math.random()-.5);
-  const usedIds=new Set(corners.map(s=>s.id));
-  const normal=[...pool].filter(s=>!usedIds.has(s.id)).sort(()=>Math.random()-.5).slice(0,20);
+  return{
+    all:pool,
+    fixedCorners:pool.filter(s=>s.isFixedCornerCandidate),
+    randomCorners:pool.filter(s=>s.difficulty===3&&!s.isFixedCornerCandidate),
+    byDifficulty:{
+      1:pool.filter(s=>s.difficulty===1),
+      2:pool.filter(s=>s.difficulty===2),
+      3:pool.filter(s=>s.difficulty===3),
+    },
+  };
+}
+function allocateDifficultySlots(pools,usedIds){
+  const selected=[];
+  const remainingByDifficulty={
+    1:pools.byDifficulty[1].filter(s=>!usedIds.has(s.id)),
+    2:pools.byDifficulty[2].filter(s=>!usedIds.has(s.id)),
+    3:pools.byDifficulty[3].filter(s=>!usedIds.has(s.id)),
+  };
+  const take=(difficulty,count)=>{
+    const chosen=pickStations(remainingByDifficulty[difficulty],count);
+    chosen.forEach(st=>usedIds.add(st.id));
+    remainingByDifficulty[difficulty]=remainingByDifficulty[difficulty].filter(st=>!usedIds.has(st.id));
+    selected.push(...chosen);
+    return count-chosen.length;
+  };
+
+  let shortage=take(2,STATION_CARD_TARGETS[2]);
+  if(shortage>0)shortage=take(1,shortage);
+  if(shortage>0)take(3,shortage);
+
+  shortage=take(1,STATION_CARD_TARGETS[1]);
+  if(shortage>0)shortage=take(3,shortage);
+  if(shortage>0)take(2,shortage);
+
+  shortage=take(3,STATION_CARD_TARGETS[3]);
+  if(shortage>0)shortage=take(1,shortage);
+  if(shortage>0)take(2,shortage);
+
+  return selected;
+}
+function placeStationsOnBoard(corners,normal){
   const card=new Array(25).fill(null);
   card[12]={id:'FREE',name:'FREE',line:null,isFree:true};
   let ci=0,ni=0;
@@ -486,6 +538,19 @@ function genStationCard(routeMode='metro'){
     card[i]=CORNER_INDICES.includes(i)?corners[ci++]:normal[ni++];
   }
   return card;
+}
+function genStationCard(routeMode='metro'){
+  const pools=buildStationPools(routeMode);
+  const fixedCorner=pickStations(pools.fixedCorners,FIXED_CORNER_COUNT);
+  const usedIds=new Set(fixedCorner.map(s=>s.id));
+  const randomCorner=pickStations(
+    pools.randomCorners.filter(s=>!usedIds.has(s.id)),
+    RANDOM_CORNER_COUNT
+  );
+  randomCorner.forEach(st=>usedIds.add(st.id));
+  const corners=shuffle([...fixedCorner,...randomCorner]);
+  const normal=shuffle(allocateDifficultySlots(pools,usedIds));
+  return placeStationsOnBoard(corners,normal);
 }
 function genMissionCard(missions){
   const pool=missions||DEFAULT_MISSIONS;
@@ -621,6 +686,7 @@ function BingoPage({gameState,myTeamId,config}){
   const stBS=new Set(stB.flat());const msBS=new Set(msB.flat());
   const myTeam=teams.find(t=>t.id===myTeamId);
   const myScore=calcScore(myTeam,config);
+  const viewScore=calcScore(viewTeam,config);
 
   return<div>
     {/* チーム切り替え */}
@@ -669,20 +735,24 @@ function BingoPage({gameState,myTeamId,config}){
       })}
     </div>}
 
-    {/* スコアサマリー（自チームのみ） */}
-    {isMyTeam&&<div style={{marginTop:12}}>
+    <div style={{marginTop:12}}>
       {mode==='double'?
         <div className="multiply-display">
-          <div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>現在のスコア</div>
-          <div className="multiply-formula">({myScore.stB}+1) × ({myScore.msB}+1) = {myScore.total}</div>
-          <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>両方バランスよく取るほど高得点！</div>
+          <div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>{isMyTeam?'現在のスコア':'観戦中チームのスコア'}</div>
+          <div className="multiply-formula">({viewScore.stB}+1) × ({viewScore.msB}+1) = {viewScore.total}</div>
+          <div style={{fontSize:10,color:'var(--muted)',marginTop:4}}>
+            {isMyTeam?'両方バランスよく取るほど高得点！':`${viewTeam?.name} の進捗を観戦できます`}
+          </div>
         </div>:
         <div className="score-detail">
-          <div className="score-row"><span className="lbl">マス数</span><span className="val">{myScore.masks}pt</span></div>
-          <div className="score-row"><span className="lbl">ビンゴ（{myScore.stB}列×3pt）</span><span className="val">{myScore.stB*3}pt</span></div>
-          <div className="score-row"><span>合計</span><span className="val" style={{fontSize:20}}>{myScore.total}pt</span></div>
+          <div className="score-row"><span className="lbl">マス数</span><span className="val">{viewScore.masks}pt</span></div>
+          <div className="score-row"><span className="lbl">ビンゴ（{viewScore.stB}列×3pt）</span><span className="val">{viewScore.stB*3}pt</span></div>
+          <div className="score-row"><span>合計</span><span className="val" style={{fontSize:20}}>{viewScore.total}pt</span></div>
         </div>}
-    </div>}
+      {!isMyTeam&&mode==='double'&&<div style={{fontSize:10,color:'var(--muted)',marginTop:8,textAlign:'center'}}>
+        自チームの現在スコア: {myScore.total}
+      </div>}
+    </div>
   </div>;
 }
 
