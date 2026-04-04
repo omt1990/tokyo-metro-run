@@ -64,7 +64,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-
 .metro-badge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 5px;border-radius:999px;background:var(--surface);border:2px solid currentColor;color:var(--accent);font-family:'Barlow Condensed',sans-serif;font-size:14px;line-height:1;font-weight:700;letter-spacing:.02em;box-shadow:0 1px 0 rgba(20,20,19,.04)}
 .metro-badge.sm{min-width:24px;height:24px;font-size:11px;border-width:1.5px}
 .metro-badge.free{border-color:var(--accent);color:var(--accent)}
-.cell-free-badge{display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 8px;border-radius:999px;border:1.5px solid var(--accent);color:var(--accent);font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:.08em}
+.cell-free-badge{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;border:2px solid var(--accent);color:var(--accent);background:#fff}
+.cell-free-badge svg{display:block}
 .multiply-display{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px;margin-bottom:12px;text-align:center}
 .multiply-formula{font-family:'Barlow Condensed',sans-serif;font-size:32px;color:var(--navy);letter-spacing:.06em}
 .score-detail{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px;margin-bottom:12px}
@@ -669,57 +670,61 @@ function getParticipantCounts(gameState){
   };
 }
 function teamLabel(index){return `チーム${String.fromCharCode(65+index)}`}
-function Icon({name,size=16,strokeWidth=1.8,className='',filled=false}){
-  const common={width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':'true'};
-  const fillColor=filled?'currentColor':'none';
-  switch(name){
-    case 'home': return<span className={`icon ${className}`}><svg {...common}><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg></span>;
-    case 'grid': return<span className={`icon ${className}`}><svg {...common}><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg></span>;
-    case 'pin': return<span className={`icon ${className}`}><svg {...common}><path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11Z"/><circle cx="12" cy="10" r="2.5"/></svg></span>;
-    case 'target': return<span className={`icon ${className}`}><svg {...common}><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span>;
-    case 'trophy': return<span className={`icon ${className}`}><svg {...common}><path d="M8 4h8v3a4 4 0 0 1-8 0V4Z"/><path d="M9 18h6"/><path d="M12 11v7"/><path d="M8 5H5a3 3 0 0 0 3 4"/><path d="M16 5h3a3 3 0 0 1-3 4"/></svg></span>;
-    case 'user': return<span className={`icon ${className}`}><svg {...common}><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>;
-    case 'lock': return<span className={`icon ${className}`}><svg {...common}><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V8a4 4 0 0 1 8 0v2"/></svg></span>;
-    case 'book': return<span className={`icon ${className}`}><svg {...common}><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v17H7.5A2.5 2.5 0 0 0 5 22V5.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/></svg></span>;
-    case 'share': return<span className={`icon ${className}`}><svg {...common}><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.3 11l7.4-4.2"/><path d="M8.3 13l7.4 4.2"/></svg></span>;
-    case 'alert': return<span className={`icon ${className}`}><svg {...common}><path d="M12 3 2.8 19h18.4L12 3Z"/><path d="M12 9v4.5"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg></span>;
-    case 'flash': return<span className={`icon ${className}`}><svg {...common}><path d="M13 2 5 13h5l-1 9 8-11h-5l1-9Z"/></svg></span>;
-    case 'clock': return<span className={`icon ${className}`}><svg {...common}><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>;
-    case 'copy': return<span className={`icon ${className}`}><svg {...common}><rect x="9" y="7" width="10" height="12" rx="2"/><rect x="5" y="3" width="10" height="12" rx="2"/></svg></span>;
-    case 'check': return<span className={`icon ${className}`}><svg {...common}><path d="m5 12.5 4.2 4.2L19 7.5"/></svg></span>;
-    case 'close': return<span className={`icon ${className}`}><svg {...common}><path d="M6 6 18 18"/><path d="M18 6 6 18"/></svg></span>;
-    case 'camera': return<span className={`icon ${className}`}><svg {...common}><path d="M4 8h3l1.5-2h7L17 8h3v11H4Z"/><circle cx="12" cy="13.5" r="3.5"/></svg></span>;
-    case 'clipboard': return<span className={`icon ${className}`}><svg {...common}><rect x="6" y="5" width="12" height="16" rx="2"/><path d="M9 5.5h6"/><rect x="9" y="3" width="6" height="4" rx="1.5"/></svg></span>;
-    case 'train': return<span className={`icon ${className}`}><svg {...common}><rect x="6" y="4" width="12" height="13" rx="3"/><path d="M8.5 18.5 7 21"/><path d="M16.5 18.5 18 21"/><path d="M9 9h6"/><circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/></svg></span>;
-    case 'play': return<span className={`icon ${className}`}><svg {...common}><path d="M8 6v12l10-6Z" fill={fillColor}/></svg></span>;
-    case 'note': return<span className={`icon ${className}`}><svg {...common}><path d="M7 4h10v16l-3-2-3 2-4-2Z"/><path d="M9 9h6"/><path d="M9 13h4"/></svg></span>;
-    case 'view': return<span className={`icon ${className}`}><svg {...common}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></span>;
-    case 'plus': return<span className={`icon ${className}`}><svg {...common}><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>;
-    case 'spark': return<span className={`icon ${className}`}><svg {...common}><path d="M12 3v4"/><path d="M12 17v4"/><path d="M3 12h4"/><path d="M17 12h4"/><path d="m5.6 5.6 2.8 2.8"/><path d="m15.6 15.6 2.8 2.8"/><path d="m18.4 5.6-2.8 2.8"/><path d="m8.4 15.6-2.8 2.8"/></svg></span>;
-    case 'utensils': return<span className={`icon ${className}`}><svg {...common}><path d="M7 4v7"/><path d="M5.5 4v4.5"/><path d="M8.5 4v4.5"/><path d="M12 4v17"/><path d="M16 4c1.7 2 2 5.8 0 8"/><path d="M16 12v9"/></svg></span>;
-    case 'stamp': return<span className={`icon ${className}`}><svg {...common}><path d="M9 8a3 3 0 1 1 6 0c0 1.3-.5 2.3-1.2 3.1L12 13l-1.8-1.9A4.7 4.7 0 0 1 9 8Z"/><rect x="6" y="14" width="12" height="4" rx="1"/><path d="M8 20h8"/></svg></span>;
-    case 'lantern': return<span className={`icon ${className}`}><svg {...common}><path d="M9 4h6"/><path d="M9 20h6"/><path d="M8 7h8"/><path d="M8 17h8"/><rect x="7" y="6" width="10" height="12" rx="4"/></svg></span>;
-    case 'circle': return<span className={`icon ${className}`}><svg {...common}><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/></svg></span>;
-    case 'gift': return<span className={`icon ${className}`}><svg {...common}><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M12 9v11"/><path d="M4 13h16"/><path d="M12 9s-4-1-4-3a2 2 0 0 1 4 0"/><path d="M12 9s4-1 4-3a2 2 0 0 0-4 0"/></svg></span>;
-    case 'building': return<span className={`icon ${className}`}><svg {...common}><rect x="6" y="4" width="12" height="16" rx="1"/><path d="M9 8h1"/><path d="M14 8h1"/><path d="M9 12h1"/><path d="M14 12h1"/><path d="M9 16h6"/></svg></span>;
-    case 'school': return<span className={`icon ${className}`}><svg {...common}><path d="m3.5 10 8.5-5 8.5 5-8.5 5-8.5-5Z"/><path d="M6.5 11.8V16l5.5 3 5.5-3v-4.2"/></svg></span>;
-    case 'arena': return<span className={`icon ${className}`}><svg {...common}><path d="M5 8h14"/><path d="M4 12h16"/><path d="M5 16h14"/><rect x="3" y="6" width="18" height="12" rx="5"/></svg></span>;
-    case 'frame': return<span className={`icon ${className}`}><svg {...common}><rect x="5" y="5" width="14" height="14" rx="2"/><path d="m8 15 3-3 2 2 3-4 2 5"/></svg></span>;
-    case 'hotel': return<span className={`icon ${className}`}><svg {...common}><path d="M7 20V5"/><path d="M17 20V9"/><path d="M7 12h10"/><path d="M7 9h5"/></svg></span>;
-    case 'palette': return<span className={`icon ${className}`}><svg {...common}><path d="M12 4a8 8 0 1 0 0 16h1.3a2.2 2.2 0 0 0 0-4.4H12A3.6 3.6 0 0 1 12 4Z"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="16" cy="10" r="1"/></svg></span>;
-    case 'castle': return<span className={`icon ${className}`}><svg {...common}><path d="M5 20V9h3V6l4 2 4-2v3h3v11Z"/><path d="M10 20v-5h4v5"/></svg></span>;
-    case 'machine': return<span className={`icon ${className}`}><svg {...common}><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 11h5"/><path d="M10 16h4"/></svg></span>;
-    case 'slope': return<span className={`icon ${className}`}><svg {...common}><path d="M5 18h14"/><path d="M8 18 16 8"/><path d="M14 8h2v2"/></svg></span>;
-    case 'coffee': return<span className={`icon ${className}`}><svg {...common}><path d="M6 10h9a0 0 0 0 1 0 0v3a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4v-3a0 0 0 0 1 0 0Z"/><path d="M15 11h1.5a2 2 0 1 1 0 4H15"/><path d="M8 20h8"/></svg></span>;
-    case 'star': return<span className={`icon ${className}`}><svg {...common}><path d="m12 4 2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L4.8 9.2l5-.7Z"/></svg></span>;
-    case 'toast': return<span className={`icon ${className}`}><svg {...common}><path d="M8 7h8a3 3 0 0 1 3 3v4a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5v-4a3 3 0 0 1 3-3Z"/><path d="M9 4h6"/></svg></span>;
-    case 'store': return<span className={`icon ${className}`}><svg {...common}><path d="M5 9h14v10H5Z"/><path d="M4 9l1.5-4h13L20 9"/><path d="M9 19v-5h6v5"/></svg></span>;
-    case 'tree': return<span className={`icon ${className}`}><svg {...common}><path d="M12 4 7 11h3l-2 3h3l-2 3h6l-2-3h3l-2-3h3Z"/><path d="M12 17v3"/></svg></span>;
-    case 'town': return<span className={`icon ${className}`}><svg {...common}><path d="M4 20V9l4-3 4 3v11"/><path d="M12 20V11l4-3 4 3v9"/><path d="M7 13h1"/><path d="M15 14h1"/></svg></span>;
-    case 'bath': return<span className={`icon ${className}`}><svg {...common}><path d="M5 12h14"/><path d="M6 12v2a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-2"/><path d="M8 12V8a2 2 0 1 1 4 0"/></svg></span>;
-    case 'mascot': return<span className={`icon ${className}`}><svg {...common}><circle cx="12" cy="9" r="3.5"/><path d="M8 20a4 4 0 0 1 8 0"/><path d="M8.5 6.5 6.5 5"/><path d="m15.5 6.5 2-1.5"/></svg></span>;
-    default: return<span className={`icon ${className}`}><svg {...common}><circle cx="12" cy="12" r="8"/></svg></span>;
-  }
+function Icon({name,size=16,className=''}){
+  const common={xmlns:'http://www.w3.org/2000/svg',width:size,height:size,viewBox:'0 0 24 24','aria-hidden':'true'};
+  const stroke={fill:'none',stroke:'currentColor',strokeWidth:'1.9',strokeLinecap:'round',strokeLinejoin:'round'};
+  const renderGlyph=()=>{
+    switch(name){
+      case 'home': return<g {...stroke}><path d="M4 10.5 12 4l8 6.5"/><path d="M6.5 9.5V20h11V9.5"/></g>;
+      case 'grid': return<g {...stroke}><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></g>;
+      case 'pin': return<g {...stroke}><path d="M12 20.5s5.5-5.1 5.5-10.1a5.5 5.5 0 1 0-11 0c0 5 5.5 10.1 5.5 10.1Z"/><circle cx="12" cy="10.4" r="2.2"/></g>;
+      case 'target': return<g {...stroke}><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></g>;
+      case 'trophy': return<g {...stroke}><path d="M8 4h8v3.2a4 4 0 0 1-8 0V4Z"/><path d="M9 18h6"/><path d="M12 11v7"/><path d="M8 5H5a3 3 0 0 0 3 4"/><path d="M16 5h3a3 3 0 0 1-3 4"/></g>;
+      case 'user': return<g {...stroke}><circle cx="12" cy="8" r="3.2"/><path d="M5.2 20a6.8 6.8 0 0 1 13.6 0"/></g>;
+      case 'lock': return<g {...stroke}><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V8a4 4 0 0 1 8 0v2"/></g>;
+      case 'book': return<g {...stroke}><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v17H7.5A2.5 2.5 0 0 0 5 22V5.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/></g>;
+      case 'share': return<g {...stroke}><circle cx="18" cy="5" r="2.2"/><circle cx="6" cy="12" r="2.2"/><circle cx="18" cy="19" r="2.2"/><path d="M8.1 11.1 15.8 6.8"/><path d="M8.1 12.9 15.8 17.2"/></g>;
+      case 'alert': return<g {...stroke}><path d="M12 3.7 3.3 19h17.4L12 3.7Z"/><path d="M12 9v4.5"/><circle cx="12" cy="16.7" r="1" fill="currentColor" stroke="none"/></g>;
+      case 'flash': return<g {...stroke}><path d="M13 2.5 6 12.5h4.6L9.8 21.5 18 10.5h-4.6L13 2.5Z"/></g>;
+      case 'clock': return<g {...stroke}><circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/></g>;
+      case 'copy': return<g {...stroke}><rect x="9" y="7" width="10" height="12" rx="2"/><rect x="5" y="3" width="10" height="12" rx="2"/></g>;
+      case 'check': return<g {...stroke}><path d="m5 12.4 4.1 4.1L19 7.6"/></g>;
+      case 'close': return<g {...stroke}><path d="M6 6 18 18"/><path d="M18 6 6 18"/></g>;
+      case 'camera': return<g {...stroke}><path d="M4 8h3l1.6-2h6.8L17 8h3v10.5H4Z"/><circle cx="12" cy="13.3" r="3.4"/></g>;
+      case 'clipboard': return<g {...stroke}><rect x="6" y="5" width="12" height="16" rx="2"/><rect x="9" y="3" width="6" height="4" rx="1.5"/><path d="M9 11h6"/><path d="M9 15h4"/></g>;
+      case 'train': return<g {...stroke}><rect x="6" y="4" width="12" height="13" rx="3"/><path d="M8.5 18.5 7 21"/><path d="M16.5 18.5 18 21"/><path d="M9 9h6"/><circle cx="9" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.1" fill="currentColor" stroke="none"/></g>;
+      case 'play': return<g><path d="M8 6v12l10-6Z" fill="currentColor"/></g>;
+      case 'note': return<g {...stroke}><path d="M7 4h10v16l-3-2-3 2-4-2Z"/><path d="M9 9h6"/><path d="M9 13h4"/></g>;
+      case 'view': return<g {...stroke}><path d="M2.8 12s3.4-5.6 9.2-5.6 9.2 5.6 9.2 5.6-3.4 5.6-9.2 5.6S2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="2.3"/></g>;
+      case 'plus': return<g {...stroke}><path d="M12 5v14"/><path d="M5 12h14"/></g>;
+      case 'spark': return<g {...stroke}><path d="M12 3v4"/><path d="M12 17v4"/><path d="M3 12h4"/><path d="M17 12h4"/><path d="m5.7 5.7 2.6 2.6"/><path d="m15.7 15.7 2.6 2.6"/><path d="m18.3 5.7-2.6 2.6"/><path d="m8.3 15.7-2.6 2.6"/></g>;
+      case 'utensils': return<g {...stroke}><path d="M7 4v7"/><path d="M5.5 4v4.5"/><path d="M8.5 4v4.5"/><path d="M12 4v17"/><path d="M16 4c1.7 2 2 5.8 0 8"/><path d="M16 12v9"/></g>;
+      case 'stamp': return<g {...stroke}><path d="M9 8a3 3 0 1 1 6 0c0 1.3-.5 2.3-1.2 3.1L12 13l-1.8-1.9A4.7 4.7 0 0 1 9 8Z"/><rect x="6" y="14" width="12" height="4" rx="1"/><path d="M8 20h8"/></g>;
+      case 'lantern': return<g {...stroke}><path d="M9 4h6"/><path d="M9 20h6"/><path d="M8 7h8"/><path d="M8 17h8"/><rect x="7" y="6" width="10" height="12" rx="4"/></g>;
+      case 'circle': return<g {...stroke}><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/></g>;
+      case 'gift': return<g {...stroke}><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M12 9v11"/><path d="M4 13h16"/><path d="M12 9s-4-1-4-3a2 2 0 0 1 4 0"/><path d="M12 9s4-1 4-3a2 2 0 0 0-4 0"/></g>;
+      case 'building': return<g {...stroke}><rect x="6" y="4" width="12" height="16" rx="1"/><path d="M9 8h1"/><path d="M14 8h1"/><path d="M9 12h1"/><path d="M14 12h1"/><path d="M9 16h6"/></g>;
+      case 'school': return<g {...stroke}><path d="m3.5 10 8.5-5 8.5 5-8.5 5-8.5-5Z"/><path d="M6.5 11.8V16l5.5 3 5.5-3v-4.2"/></g>;
+      case 'arena': return<g {...stroke}><path d="M5 8h14"/><path d="M4 12h16"/><path d="M5 16h14"/><rect x="3" y="6" width="18" height="12" rx="5"/></g>;
+      case 'frame': return<g {...stroke}><rect x="5" y="5" width="14" height="14" rx="2"/><path d="m8 15 3-3 2 2 3-4 2 5"/></g>;
+      case 'hotel': return<g {...stroke}><path d="M7 20V5"/><path d="M17 20V9"/><path d="M7 12h10"/><path d="M7 9h5"/></g>;
+      case 'palette': return<g {...stroke}><path d="M12 4a8 8 0 1 0 0 16h1.3a2.2 2.2 0 0 0 0-4.4H12A3.6 3.6 0 0 1 12 4Z"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="16" cy="10" r="1"/></g>;
+      case 'castle': return<g {...stroke}><path d="M5 20V9h3V6l4 2 4-2v3h3v11Z"/><path d="M10 20v-5h4v5"/></g>;
+      case 'machine': return<g {...stroke}><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 11h5"/><path d="M10 16h4"/></g>;
+      case 'slope': return<g {...stroke}><path d="M5 18h14"/><path d="M8 18 16 8"/><path d="M14 8h2v2"/></g>;
+      case 'coffee': return<g {...stroke}><path d="M6 10h9v3a4 4 0 0 1-4 4h-1a4 4 0 0 1-4-4v-3Z"/><path d="M15 11h1.5a2 2 0 1 1 0 4H15"/><path d="M8 20h8"/></g>;
+      case 'star': return<g {...stroke}><path d="m12 4 2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L4.8 9.2l5-.7Z"/></g>;
+      case 'toast': return<g {...stroke}><path d="M8 7h8a3 3 0 0 1 3 3v4a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5v-4a3 3 0 0 1 3-3Z"/><path d="M9 4h6"/></g>;
+      case 'store': return<g {...stroke}><path d="M5 9h14v10H5Z"/><path d="M4 9l1.5-4h13L20 9"/><path d="M9 19v-5h6v5"/></g>;
+      case 'tree': return<g {...stroke}><path d="M12 4 7 11h3l-2 3h3l-2 3h6l-2-3h3l-2-3h3Z"/><path d="M12 17v3"/></g>;
+      case 'town': return<g {...stroke}><path d="M4 20V9l4-3 4 3v11"/><path d="M12 20V11l4-3 4 3v9"/><path d="M7 13h1"/><path d="M15 14h1"/></g>;
+      case 'bath': return<g {...stroke}><path d="M5 12h14"/><path d="M6 12v2a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-2"/><path d="M8 12V8a2 2 0 1 1 4 0"/></g>;
+      case 'mascot': return<g {...stroke}><circle cx="12" cy="9" r="3.5"/><path d="M8 20a4 4 0 0 1 8 0"/><path d="M8.5 6.5 6.5 5"/><path d="m15.5 6.5 2-1.5"/></g>;
+      case 'metro-mark': return<g><circle cx="12" cy="12" r="10" fill="#e60012"/><circle cx="12" cy="12" r="5.2" fill="#fff"/><path d="M8.3 16.6V7.6h1.8l1.9 4.6 1.9-4.6h1.8v9h-1.8v-5.2l-1.4 3.5h-1l-1.4-3.5v5.2Z" fill="#111"/></g>;
+      default: return<g {...stroke}><circle cx="12" cy="12" r="8"/></g>;
+    }
+  };
+  return<span className={`icon ${className}`}><svg {...common}>{renderGlyph()}</svg></span>;
 }
 function LogIcon({type}){
   const map={s:'pin',bingo:'grid',ms:'target',ev:'flash',st:'note',warn:'alert'};
@@ -736,7 +741,7 @@ function MetroBadge({line,code,size='md'}){
 function MetroBadgeGroup({station,size='md'}){
   const badges=station?.badges||[];
   if(!badges.length){
-    return<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>;
+    return<div className="metro-badges"><span className="cell-free-badge"><Icon name="metro-mark" size={18}/></span></div>;
   }
   return<div className="metro-badges">{badges.map((badge,idx)=><MetroBadge key={`${badge.code}-${idx}`} {...badge} size={size}/>)}</div>;
 }
@@ -985,8 +990,8 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
         const bl=stBS.has(i)&&hit;
         const isCorner=CORNER_INDICES.includes(i);
         return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${bl?'bline':''} ${isCorner&&!hit?'corner':''}`}>
-          <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
-          <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
+          <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge"><Icon name="metro-mark" size={18}/></span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
+          <div className="bnm">{cell.isFree?'':cell.name}</div>
         </div>;
       })}
     </div>}
@@ -998,7 +1003,7 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
         const bl=msBS.has(i)&&hit;
         return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${pend?'pend':''} ${bl?'bline mb':''}`}>
           {!cell.isFree&&<div className="bln"><MissionIcon name={cell.icon} size={15}/></div>}
-          <div className="bnm" style={{fontSize:7}}>{cell.isFree?'FREE':(cell.text||'').slice(0,10)+'…'}</div>
+          <div className="bnm" style={{fontSize:7}}>{cell.isFree?'':(cell.text||'').slice(0,10)+'…'}</div>
         </div>;
       })}
     </div>}
@@ -1160,8 +1165,8 @@ function ScorePage({gameState,myTeamId,isFinished}){
         {(team.stationCard||[]).map((cell,i)=>{
           const hit=cell.isFree||(team.stationReached||[]).includes(cell.id);
           return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''}`}>
-            <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge">FREE</span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
-            <div className="bnm">{cell.isFree?'FREE':cell.name}</div>
+            <div className="bln">{cell.isFree?<div className="metro-badges"><span className="cell-free-badge"><Icon name="metro-mark" size={18}/></span></div>:<MetroBadgeGroup station={cell} size="sm"/>}</div>
+            <div className="bnm">{cell.isFree?'':cell.name}</div>
           </div>;
         })}
       </div>
