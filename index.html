@@ -1152,19 +1152,19 @@ function MissionPage({team,onSubmitMission}){
       <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>{sel.text}</div>
       <div style={{fontSize:11,color:'var(--muted)'}} className="icon-chip"><Icon name="clipboard" size={13}/>証拠：{sel.evidence}</div>
     </div>
-    <p className="sec">証拠写真（必須）</p>
+    <p className="sec">証拠写真（任意）</p>
     <div className={`photo-area ${photo?'has':''}`} onClick={()=>fileRef.current.click()}>
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="photo-input" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}}/>
       {photo?<><img src={photo} className="photo-preview" alt="証拠"/><div style={{fontSize:10,color:'var(--green)',marginTop:5}} className="icon-chip"><Icon name="check" size={12}/>写真添付済み</div></>:<><div style={{fontSize:26,marginBottom:5}}><Icon name="camera" size={28}/></div><div style={{fontSize:11,color:'var(--muted)'}}>証拠写真を撮影または選択</div></>}
     </div>
     <input className="sinp" style={{marginTop:10}} placeholder="補足メモ（任意）" value={note} onChange={e=>setNote(e.target.value)}/>
-    <button className={`btn ${photo?'pri':'sec'}`} onClick={()=>{if(!photo)return;onSubmitMission(sel.id,photo,note);setSel(null);setPhoto(null);setNote('');}} disabled={!photo}>
-      {photo?<span className="icon-chip"><Icon name="share" size={15}/>運営に申請する</span>:'写真を添付してください'}
+    <button className="btn pri" onClick={()=>{onSubmitMission(sel.id,photo,note);setSel(null);setPhoto(null);setNote('');}}>
+      <span className="icon-chip"><Icon name="share" size={15}/>{photo?'写真付きで申請する':'この内容で申請する'}</span>
     </button>
   </div>;
   return<div>
     <div style={{background:'rgba(143,118,214,.1)',border:'1px solid var(--purple)',borderRadius:10,padding:'9px 12px',marginBottom:12,fontSize:11}}>
-      <span style={{fontWeight:700,color:'var(--purple)'}} className="icon-chip"><Icon name="target" size={14}/>ミッションビンゴ</span>　写真を撮って申請 → 運営が承認するとマスが開きます
+      <span style={{fontWeight:700,color:'var(--purple)'}} className="icon-chip"><Icon name="target" size={14}/>ミッションビンゴ</span>　内容を申請 → 運営が承認するとマスが開きます
     </div>
     {cardMissions.map((m,idx)=>{
       const done=msR.has(m.id);const pend=subs[m.id]==='pending';const rej=subs[m.id]==='rejected';
