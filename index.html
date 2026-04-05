@@ -1143,7 +1143,6 @@ function MissionPage({team,onSubmitMission}){
   const [note,setNote]=useState('');
   const fileRef=useRef();
   const msR=new Set(team.missionReached||[]);
-  const subs=team.missionSubmissions||{};
   const cardMissions=(team.missionCard||[]).filter(c=>!c.isFree);
   if(sel)return<div>
     <button onClick={()=>{setSel(null);setPhoto(null);setNote('');}} className="btn ghost" style={{marginTop:0,marginBottom:8,textAlign:'left'}}>← 一覧に戻る</button>
@@ -1164,19 +1163,18 @@ function MissionPage({team,onSubmitMission}){
   </div>;
   return<div>
     <div style={{background:'rgba(143,118,214,.1)',border:'1px solid var(--purple)',borderRadius:10,padding:'9px 12px',marginBottom:12,fontSize:11}}>
-      <span style={{fontWeight:700,color:'var(--purple)'}} className="icon-chip"><Icon name="target" size={14}/>ミッションビンゴ</span>　内容を申請 → 運営が承認するとマスが開きます
+      <span style={{fontWeight:700,color:'var(--purple)'}} className="icon-chip"><Icon name="target" size={14}/>ミッションビンゴ</span>　内容を記録すると、その場でマスが開きます
     </div>
     {cardMissions.map((m,idx)=>{
-      const done=msR.has(m.id);const pend=subs[m.id]==='pending';const rej=subs[m.id]==='rejected';
-      return<div key={m.id} className={`mission-item ${done?'done':''} ${pend?'pend':''}`} onClick={()=>!done&&!pend&&setSel(m)}>
+      const done=msR.has(m.id);
+      return<div key={m.id} className={`mission-item ${done?'done':''}`} onClick={()=>!done&&setSel(m)}>
         <div className="mn">{idx+1}</div>
         <div className="mb2">
           <div className="mt"><span className="icon-chip"><MissionIcon name={m.icon} size={15}/>{m.text}</span></div>
           <div className="me"><span className="icon-chip"><Icon name="clipboard" size={12}/>{m.evidence}</span></div>
-          {rej&&<div style={{fontSize:10,color:'var(--red)',marginTop:3}} className="icon-chip"><Icon name="close" size={11}/>却下。再申請できます</div>}
         </div>
-        <div className={`ms-badge ${done?'ms-done':pend?'ms-pend':rej?'ms-rej':'ms-none'}`}>
-          {done?'承認済':pend?'審査中':rej?'却下':'未達成'}
+        <div className={`ms-badge ${done?'ms-done':'ms-none'}`}>
+          {done?'達成済み':'未達成'}
         </div>
       </div>;
     })}
@@ -1335,7 +1333,8 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
         </div>
       ))}
       <p className="sec">ミッション承認</p>
-      {(gameState.pendingApprovals||[]).length===0?<div className="empty">ミッション承認待ちはありません</div>:(gameState.pendingApprovals||[]).map((appr,i)=>{
+      <div className="empty">ミッションは申請後すぐ反映されます</div>
+      {(gameState.pendingApprovals||[]).length===0?null:(gameState.pendingApprovals||[]).map((appr,i)=>{
         const team=(gameState.teams||[]).find(t=>t.id===appr.teamId);
         const missions=gameState.missions||DEFAULT_MISSIONS;
         const mission=missions.find(m=>m.id===appr.missionId);
@@ -1797,10 +1796,28 @@ function App(){
 
   const handleMissionSubmit=useCallback(async(missionId,photo,note)=>{
     if(!myTeamId||!gameState||gameState.state!=='in_progress')return;
-    const appr={id:'a'+Date.now(),teamId:myTeamId,missionId,photo,note,time:nowTime()};
-    const updatedTeams=gameState.teams.map(t=>{if(t.id!==myTeamId)return t;return{...t,missionSubmissions:{...(t.missionSubmissions||{}),[missionId]:'pending'}};});
-    await save({...gameState,teams:updatedTeams,pendingApprovals:[...(gameState.pendingApprovals||[]),appr]});
-    showToast({type:'ms',icon:'share',title:'申請しました！',sub:'運営の承認をお待ちください'});
+    const updatedTeams=gameState.teams.map(t=>{
+      if(t.id!==myTeamId)return t;
+      if((t.missionReached||[]).includes(missionId))return t;
+      const newReached=[...(t.missionReached||[]),missionId];
+      const prevBingo=checkBingo(t.missionCard,new Set(t.missionReached||[]));
+      const newBingo=checkBingo(t.missionCard,new Set(newReached));
+      const missionText=(gameState.missions||DEFAULT_MISSIONS).find(m=>m.id===missionId)?.text||'';
+      const sub=note?`${missionText} / ${note}`:missionText;
+      let newLogs=[...(t.logs||[]),{type:'ms',title:'ミッション達成！',sub,time:nowTime(),photo:photo||null}];
+      if(newBingo.length>prevBingo.length){
+        const diff=newBingo.length-prevBingo.length;
+        newLogs=[...newLogs,{type:'bingo',title:`ミッションBINGO！ ${diff}列`,sub:'スコア更新',time:nowTime()}];
+      }
+      return{
+        ...t,
+        missionSubmissions:{...(t.missionSubmissions||{}),[missionId]:'completed'},
+        missionReached:newReached,
+        logs:newLogs,
+      };
+    });
+    await save({...gameState,teams:updatedTeams,pendingApprovals:(gameState.pendingApprovals||[]).filter(a=>a.teamId!==myTeamId||a.missionId!==missionId)});
+    showToast({type:'ms',icon:'target',title:'ミッションを記録しました',sub:''});
   },[myTeamId,gameState,showToast,save]);
 
   const handleApprove=useCallback(async(appr)=>{
