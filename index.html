@@ -648,8 +648,11 @@ function calcScore(team,config){
   const stMasks=(team.stationReached||[]).filter(id=>id!=='FREE').length;
   const msMasks=(team.missionReached||[]).filter(id=>id!=='FREE').length;
   const gp=(team.goalPenalty||0)+(team.manualScoreDelta||0);
-  const total=stMasks+msMasks+(stBingo.length+msBingo.length)*3+gp;
-  return{stB:stBingo.length,msB:msBingo.length,masks:stMasks+msMasks,stMasks,msMasks,total};
+  const stPoints=stMasks+stBingo.length*3;
+  const msPoints=msMasks+msBingo.length*3;
+  const mode=config?.mode||'basic';
+  const total=mode==='double'?(stPoints*msPoints)+gp:stPoints+gp;
+  return{stB:stBingo.length,msB:msBingo.length,masks:stMasks+msMasks,stMasks,msMasks,stPoints,msPoints,total};
 }
 function genCode(){return Math.random().toString(36).substr(2,6).toUpperCase()}
 function nowTime(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
@@ -755,6 +758,7 @@ function createTeam(index,cfg,missions){
     stationReached:['FREE'],
     missionReached:['FREE'],
     missionSubmissions:{},
+    missionStationClaims:{},
     goalPenalty:0,
     manualScoreDelta:0,
     logs:[{type:'st',title:`${teamLabel(index)} を作成`,sub:'大会準備中',time:nowTime()}],
@@ -850,6 +854,7 @@ function buildRuleSummary(gameState){
     'トランプを1枚引き、出た数だけ上りか下りを選んで移動します。',
     '路線の端まで来たら折り返します。',
     '到着した駅は写真付きで記録してください。',
+    'ミッションは1駅につき1件まで記録できます。',
     cfg.mode==='double'
       ?'ダブルビンゴは駅ビンゴとミッションビンゴを同時進行します。'
       :'ベーシックは駅ビンゴのみで進行します。',
@@ -937,10 +942,10 @@ function RuleScreen({gameState,onClose,requireConfirm=false}){
         <div className="rule-card-title"><span className="icon-chip"><Icon name="target" size={16}/></span>ミッションビンゴ</div>
         <div className="rule-card-body">
           駅ビンゴに加えて、ミッションビンゴも同時進行します。<br/>
-          ミッションを達成したら写真を撮って申請。<br/>
-          運営が承認するとマスが埋まります。<br/><br/>
-          <span style={{color:'var(--yellow)',fontWeight:700}}>1マス埋めるごとに +1pt / ビンゴ成立で +3pt</span><br/>
-          駅とミッションの両方を積み上げるほど高得点になります。
+          ミッションは内容を記録するとその場で反映されます。<br/>
+          同じ駅ではミッションを1件までしか記録できません。<br/><br/>
+          <span style={{color:'var(--yellow)',fontWeight:700}}>総合点 = 駅ポイント × ミッションポイント</span><br/>
+          それぞれ「1マス +1pt / ビンゴ成立 +3pt」で計算します。
         </div>
       </div>}
       {mode==='basic'&&<div className="rule-card">
@@ -1049,9 +1054,9 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
         {isMyTeam||showOpponentDetails?<><div className="score-row"><span className="lbl">マス数</span><span className="val">{viewScore.masks}pt</span></div>
         {mode==='double'
           ?<>
-            <div className="score-row"><span className="lbl">駅到着</span><span className="val">{viewScore.stMasks}pt</span></div>
-            <div className="score-row"><span className="lbl">ミッション達成</span><span className="val">{viewScore.msMasks}pt</span></div>
-            <div className="score-row"><span className="lbl">ビンゴ（{viewScore.stB+viewScore.msB}列×3pt）</span><span className="val">{(viewScore.stB+viewScore.msB)*3}pt</span></div>
+            <div className="score-row"><span className="lbl">駅ポイント</span><span className="val">{viewScore.stPoints}pt</span></div>
+            <div className="score-row"><span className="lbl">ミッションポイント</span><span className="val">{viewScore.msPoints}pt</span></div>
+            <div className="score-row"><span className="lbl">掛け算</span><span className="val">{viewScore.stPoints} × {viewScore.msPoints}</span></div>
           </>
           :<div className="score-row"><span className="lbl">ビンゴ（{viewScore.stB}列×3pt）</span><span className="val">{viewScore.stB*3}pt</span></div>}
         <div className="score-row"><span>合計</span><span className="val" style={{fontSize:20}}>{viewScore.total}pt</span></div></>
@@ -1144,6 +1149,9 @@ function MissionPage({team,onSubmitMission}){
   const fileRef=useRef();
   const msR=new Set(team.missionReached||[]);
   const cardMissions=(team.missionCard||[]).filter(c=>!c.isFree);
+  const currentStationId=team.currentStation||null;
+  const usedMissionId=currentStationId?(team.missionStationClaims||{})[currentStationId]:null;
+  const canSubmitAtCurrentStation=!!currentStationId&&!usedMissionId;
   if(sel)return<div>
     <button onClick={()=>{setSel(null);setPhoto(null);setNote('');}} className="btn ghost" style={{marginTop:0,marginBottom:8,textAlign:'left'}}>← 一覧に戻る</button>
     <div style={{background:'var(--surface-sub)',borderRadius:18,padding:12,marginBottom:12,border:'1px solid var(--border)'}}>
@@ -1151,19 +1159,24 @@ function MissionPage({team,onSubmitMission}){
       <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>{sel.text}</div>
       <div style={{fontSize:11,color:'var(--muted)'}} className="icon-chip"><Icon name="clipboard" size={13}/>証拠：{sel.evidence}</div>
     </div>
+    <div style={{fontSize:11,color:'var(--muted)',marginBottom:8,lineHeight:1.7}}>
+      {currentStationId
+        ?`現在地の駅で記録します${usedMissionId?'（この駅ではすでに1件記録済み）':''}`
+        :'先に到着タブで駅到着を記録してください'}
+    </div>
     <p className="sec">証拠写真（任意）</p>
     <div className={`photo-area ${photo?'has':''}`} onClick={()=>fileRef.current.click()}>
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="photo-input" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}}/>
       {photo?<><img src={photo} className="photo-preview" alt="証拠"/><div style={{fontSize:10,color:'var(--green)',marginTop:5}} className="icon-chip"><Icon name="check" size={12}/>写真添付済み</div></>:<><div style={{fontSize:26,marginBottom:5}}><Icon name="camera" size={28}/></div><div style={{fontSize:11,color:'var(--muted)'}}>証拠写真を撮影または選択</div></>}
     </div>
     <input className="sinp" style={{marginTop:10}} placeholder="補足メモ（任意）" value={note} onChange={e=>setNote(e.target.value)}/>
-    <button className="btn pri" onClick={()=>{onSubmitMission(sel.id,photo,note);setSel(null);setPhoto(null);setNote('');}}>
+    <button className={`btn ${canSubmitAtCurrentStation?'pri':'sec'}`} disabled={!canSubmitAtCurrentStation} onClick={()=>{if(!canSubmitAtCurrentStation)return;onSubmitMission(sel.id,photo,note);setSel(null);setPhoto(null);setNote('');}}>
       <span className="icon-chip"><Icon name="share" size={15}/>{photo?'写真付きで申請する':'この内容で申請する'}</span>
     </button>
   </div>;
   return<div>
     <div style={{background:'rgba(143,118,214,.1)',border:'1px solid var(--purple)',borderRadius:10,padding:'9px 12px',marginBottom:12,fontSize:11}}>
-      <span style={{fontWeight:700,color:'var(--purple)'}} className="icon-chip"><Icon name="target" size={14}/>ミッションビンゴ</span>　内容を記録すると、その場でマスが開きます
+      <span style={{fontWeight:700,color:'var(--purple)'}} className="icon-chip"><Icon name="target" size={14}/>ミッションビンゴ</span>　内容を記録すると、その場でマスが開きます。1駅につき1件までです
     </div>
     {cardMissions.map((m,idx)=>{
       const done=msR.has(m.id);
@@ -1226,9 +1239,9 @@ function ScorePage({gameState,myTeamId,isFinished}){
     <p className="sec">得点内訳</p>
     <div className="score-detail">
       {mode==='double'?<>
-      <div className="score-row"><span className="lbl">駅到着</span><span className="val">{myTeam.stMasks}pt</span></div>
-      <div className="score-row"><span className="lbl">ミッション達成</span><span className="val">{myTeam.msMasks}pt</span></div>
-      <div className="score-row"><span className="lbl">ビンゴ（{myTeam.stB+myTeam.msB}列×3pt）</span><span className="val">{(myTeam.stB+myTeam.msB)*3}pt</span></div>
+      <div className="score-row"><span className="lbl">駅ポイント</span><span className="val">{myTeam.stPoints}pt</span></div>
+      <div className="score-row"><span className="lbl">ミッションポイント</span><span className="val">{myTeam.msPoints}pt</span></div>
+      <div className="score-row"><span className="lbl">掛け算</span><span className="val">{myTeam.stPoints} × {myTeam.msPoints}</span></div>
       <div className="score-row"><span>合計</span><span className="val" style={{fontSize:22}}>{myTeam.total}pt</span></div>
       </>:<>
       <div className="score-row"><span className="lbl">マス（{myTeam.masks}×1pt）</span><span className="val">{myTeam.masks}pt</span></div>
@@ -1416,7 +1429,7 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
         </div>
         <div style={{fontSize:10,color:'var(--muted)'}}>
           {config?.mode==='double'
-            ?`駅${sc.stMasks} + ミッション${sc.msMasks} + BINGO${(sc.stB+sc.msB)*3}pt = ${sc.total}pt`
+            ?`駅${sc.stPoints} × ミッション${sc.msPoints} = ${sc.total}pt`
             :`マス${sc.masks} + BINGO${sc.stB*3}pt = ${sc.total}pt`}
         </div>
       </div>;
@@ -1799,11 +1812,13 @@ function App(){
     const updatedTeams=gameState.teams.map(t=>{
       if(t.id!==myTeamId)return t;
       if((t.missionReached||[]).includes(missionId))return t;
+      if(!t.currentStation||(t.missionStationClaims||{})[t.currentStation])return t;
       const newReached=[...(t.missionReached||[]),missionId];
       const prevBingo=checkBingo(t.missionCard,new Set(t.missionReached||[]));
       const newBingo=checkBingo(t.missionCard,new Set(newReached));
       const missionText=(gameState.missions||DEFAULT_MISSIONS).find(m=>m.id===missionId)?.text||'';
-      const sub=note?`${missionText} / ${note}`:missionText;
+      const stationName=getPool(gameState?.config?.routeMode||'metro').find(st=>st.id===t.currentStation)?.name||t.currentStation;
+      const sub=note?`${missionText} / ${stationName} / ${note}`:`${missionText} / ${stationName}`;
       let newLogs=[...(t.logs||[]),{type:'ms',title:'ミッション達成！',sub,time:nowTime(),photo:photo||null}];
       if(newBingo.length>prevBingo.length){
         const diff=newBingo.length-prevBingo.length;
@@ -1812,12 +1827,13 @@ function App(){
       return{
         ...t,
         missionSubmissions:{...(t.missionSubmissions||{}),[missionId]:'completed'},
+        missionStationClaims:{...(t.missionStationClaims||{}),[t.currentStation]:missionId},
         missionReached:newReached,
         logs:newLogs,
       };
     });
     await save({...gameState,teams:updatedTeams,pendingApprovals:(gameState.pendingApprovals||[]).filter(a=>a.teamId!==myTeamId||a.missionId!==missionId)});
-    showToast({type:'ms',icon:'target',title:'ミッションを記録しました',sub:''});
+    showToast({type:'ms',icon:'target',title:'ミッションを記録しました',sub:'1駅につき1件まで'});
   },[myTeamId,gameState,showToast,save]);
 
   const handleApprove=useCallback(async(appr)=>{
