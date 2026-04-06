@@ -498,30 +498,30 @@ const STATION_CODE_MAP={
   sengakuji:[{line:'asakusa',code:'A07'}],
 };
 const DEFAULT_MISSIONS=[
-  {id:'m01',text:'その駅名が入った飲食店に入る（チェーン除く）',evidence:'写真',icon:'utensils'},
-  {id:'m02',text:'御朱印をもらう',evidence:'御朱印帳 or 紙',icon:'stamp'},
-  {id:'m03',text:'50年以上続く老舗を訪問',evidence:'外観＋創業年看板',icon:'lantern'},
-  {id:'m04',text:'地域限定デザインのマンホールを撮影',evidence:'写真',icon:'circle'},
-  {id:'m05',text:'駅名が商品名に含まれるお菓子を購入',evidence:'パッケージ写真',icon:'gift'},
-  {id:'m06',text:'プライム企業の本社を撮影',evidence:'看板＋建物',icon:'building'},
-  {id:'m07',text:'100年以上続く学校を訪問',evidence:'校門＋表札',icon:'school'},
-  {id:'m08',text:'プロスポーツチームの本拠地を撮影',evidence:'外観',icon:'arena'},
-  {id:'m09',text:'限定クリアファイルを購入（美術館・博物館など）',evidence:'商品＋袋',icon:'frame'},
-  {id:'m10',text:'創業100年以上のホテルまたは旅館を撮影',evidence:'建物外観',icon:'hotel'},
-  {id:'m11',text:'色の入った駅名の駅',evidence:'案内板写真',icon:'palette'},
-  {id:'m12',text:'重要文化財を撮影',evidence:'案内板写真',icon:'castle'},
-  {id:'m13',text:'飲料以外を売る自販機を撮影',evidence:'写真',icon:'machine'},
-  {id:'m14',text:'坂の案内板を撮影',evidence:'写真',icon:'slope'},
-  {id:'m15',text:'その駅にしかないローカルカフェで休憩',evidence:'外観',icon:'coffee'},
-  {id:'m16',text:'Google評価★1点台（30件以上）の店を撮影',evidence:'店頭＋スクショ',icon:'star'},
-  {id:'m17',text:'閉店のお知らせ貼り紙を撮影',evidence:'写真',icon:'note'},
-  {id:'m18',text:'横丁でお酒を飲む（看板＋乾杯写真）',evidence:'写真',icon:'toast'},
-  {id:'m19',text:'大手4社以外のコンビニを撮影',evidence:'外観',icon:'store'},
-  {id:'m20',text:'推し広告を撮影（ファン出資広告など）',evidence:'写真',icon:'camera'},
-  {id:'m21',text:'ローカル公園の看板を撮影（wiki未掲載）',evidence:'案内板写真',icon:'tree'},
-  {id:'m22',text:'商店街のアーチを撮影',evidence:'写真',icon:'town'},
-  {id:'m23',text:'チェーン店以外の銭湯の外観を撮影',evidence:'写真',icon:'bath'},
-  {id:'m24',text:'区や市の公式ゆるキャラ像・パネルを撮影',evidence:'写真',icon:'mascot'},
+  {id:'m01',difficulty:1,text:'ローカル公園の看板を撮影（wikiに表題掲載なしの公園）',evidence:'公園名が分かる看板の写真',icon:'tree'},
+  {id:'m02',difficulty:1,text:'商店街のアーチを撮影',evidence:'商店街名が分かるアーチの写真',icon:'town'},
+  {id:'m03',difficulty:1,text:'路線末端駅（No.1駅）の+4以内で下車する',evidence:'駅名看板の写真',icon:'train'},
+  {id:'m04',difficulty:1,text:'路線末端駅（No.が最大駅）の-4以内で下車する',evidence:'駅名看板の写真',icon:'train'},
+  {id:'m05',difficulty:1,text:'橋を撮影する（橋名の分かる看板を含める）',evidence:'橋名が読める写真',icon:'camera'},
+  {id:'m06',difficulty:1,text:'8番出口を撮影する',evidence:'出口番号が写った写真',icon:'note'},
+  {id:'m07',difficulty:1,text:'坂の案内板を撮影',evidence:'坂名の案内板写真',icon:'slope'},
+  {id:'m08',difficulty:1,text:'酒を飲んだ写真を撮る ※飲みたい人だけで可',evidence:'乾杯または飲み物の写真',icon:'toast'},
+  {id:'m09',difficulty:2,text:'50年以上続く老舗を訪問',evidence:'店舗外観と創業年が分かる情報',icon:'lantern'},
+  {id:'m10',difficulty:2,text:'美術館・博物館やご当地など会場限定クリアファイルを購入 ※購入先は相手と相談（小売の買取）',evidence:'購入物と購入場所が分かる写真',icon:'frame'},
+  {id:'m11',difficulty:2,text:'東西南北が入った駅',evidence:'駅名看板の写真',icon:'target'},
+  {id:'m12',difficulty:2,text:'漢数字が入った駅',evidence:'駅名看板の写真',icon:'note'},
+  {id:'m13',difficulty:2,text:'アパホテルの前で写真を撮る',evidence:'ホテル名が写る外観写真',icon:'camera'},
+  {id:'m14',difficulty:2,text:'寺の名前がわかる写真を撮る',evidence:'寺名が分かる写真',icon:'castle'},
+  {id:'m15',difficulty:2,text:'神社の名前がわかる写真を撮る',evidence:'神社名が分かる写真',icon:'stamp'},
+  {id:'m16',difficulty:2,text:'東京個別指導学院を撮影する',evidence:'看板が写る写真',icon:'school'},
+  {id:'m17',difficulty:3,text:'その駅名が入った飲食店の写真を撮る ※ただしチェーンの○○店は除く',evidence:'店名と駅名の一致が分かる写真',icon:'utensils'},
+  {id:'m18',difficulty:3,text:'駅名が商品名に含まれる飲食物を購入',evidence:'商品名が読める購入写真',icon:'gift'},
+  {id:'m19',difficulty:3,text:'プライム企業の本社を撮影',evidence:'社名が分かる建物写真',icon:'building'},
+  {id:'m20',difficulty:3,text:'色の入った駅',evidence:'駅名看板の写真',icon:'palette'},
+  {id:'m21',difficulty:3,text:'重要文化財を撮影',evidence:'重要文化財と分かる案内板や対象物の写真',icon:'castle'},
+  {id:'m22',difficulty:3,text:'その駅にしかないローカルカフェで休憩',evidence:'店名が分かる外観またはレシート',icon:'coffee'},
+  {id:'m23',difficulty:3,text:'駅名の由来を示すものを撮影する',evidence:'由来説明板や掲示の写真',icon:'book'},
+  {id:'m24',difficulty:3,text:'地上にある駅',evidence:'駅入口またはホームが地上と分かる写真',icon:'pin'},
 ];
 
 // ── HELPERS ──
@@ -531,6 +531,7 @@ const MISSION_ICON_COLORS={
   machine:'#00ac9b',slope:'#9b9ea0',coffee:'#9c5e31',star:'#f39700',note:'#1f2f56',toast:'#e8508a',
   store:'#00bb85',camera:'#009bbf',tree:'#009944',town:'#687681',bath:'#00a6d6',mascot:'#e60012',
 };
+const MISSION_CARD_TARGETS={1:8,2:8,3:4};
 const STATION_CARD_TARGETS={1:4,2:12,3:4};
 const FIXED_CORNER_COUNT=2;
 const RANDOM_CORNER_COUNT=2;
@@ -624,10 +625,72 @@ function genStationCard(routeMode='metro'){
   const normal=shuffle(allocateDifficultySlots(pools,usedIds));
   return placeStationsOnBoard(corners,normal);
 }
+function withMissionMeta(mission){
+  return{...mission,difficulty:mission.difficulty||2};
+}
+function pickMissions(pool,count){
+  return shuffle(pool).slice(0,Math.max(0,count));
+}
+function buildMissionPools(missions=DEFAULT_MISSIONS){
+  const pool=(missions||DEFAULT_MISSIONS).map(withMissionMeta);
+  return{
+    all:pool,
+    byDifficulty:{
+      1:pool.filter(m=>m.difficulty===1),
+      2:pool.filter(m=>m.difficulty===2),
+      3:pool.filter(m=>m.difficulty===3),
+    },
+  };
+}
+function allocateMissionSlots(pools,usedIds){
+  const selected=[];
+  const remainingByDifficulty={
+    1:pools.byDifficulty[1].filter(m=>!usedIds.has(m.id)),
+    2:pools.byDifficulty[2].filter(m=>!usedIds.has(m.id)),
+    3:pools.byDifficulty[3].filter(m=>!usedIds.has(m.id)),
+  };
+  const take=(difficulty,count)=>{
+    const chosen=pickMissions(remainingByDifficulty[difficulty],count);
+    chosen.forEach(m=>usedIds.add(m.id));
+    remainingByDifficulty[difficulty]=remainingByDifficulty[difficulty].filter(m=>!usedIds.has(m.id));
+    selected.push(...chosen);
+    return count-chosen.length;
+  };
+
+  let shortage=take(2,MISSION_CARD_TARGETS[2]);
+  if(shortage>0)shortage=take(1,shortage);
+  if(shortage>0)take(3,shortage);
+
+  shortage=take(1,MISSION_CARD_TARGETS[1]);
+  if(shortage>0)shortage=take(2,shortage);
+  if(shortage>0)take(3,shortage);
+
+  shortage=take(3,MISSION_CARD_TARGETS[3]);
+  if(shortage>0)shortage=take(2,shortage);
+  if(shortage>0)take(1,shortage);
+
+  return selected;
+}
 function genMissionCard(missions){
-  const pool=missions||DEFAULT_MISSIONS;
-  const sh=[...pool].sort(()=>Math.random()-.5).slice(0,24);
-  return [...Array(25)].map((_,i)=>i===12?{id:'FREE',name:'FREE',isFree:true}:sh[i-(i>12?1:0)]);
+  const pools=buildMissionPools(missions||DEFAULT_MISSIONS);
+  const usedIds=new Set();
+  let corners=pickMissions(pools.byDifficulty[3],CORNER_INDICES.length);
+  corners.forEach(m=>usedIds.add(m.id));
+  if(corners.length<CORNER_INDICES.length){
+    const fallback=[
+      ...pickMissions(pools.byDifficulty[2].filter(m=>!usedIds.has(m.id)),CORNER_INDICES.length-corners.length),
+      ...pickMissions(pools.byDifficulty[1].filter(m=>!usedIds.has(m.id)),CORNER_INDICES.length-corners.length),
+    ].slice(0,CORNER_INDICES.length-corners.length);
+    fallback.forEach(m=>usedIds.add(m.id));
+    corners=[...corners,...fallback];
+  }
+  let normal=allocateMissionSlots(pools,usedIds);
+  if(normal.length<20){
+    const fallback=pickMissions(pools.all.filter(m=>!usedIds.has(m.id)),20-normal.length);
+    fallback.forEach(m=>usedIds.add(m.id));
+    normal=[...normal,...fallback];
+  }
+  return placeStationsOnBoard(shuffle(corners),shuffle(normal));
 }
 function checkBingo(card,reached){
   if(!card||!reached)return[];
@@ -1535,15 +1598,23 @@ function OrganizerSetup({onCreateGame,onBack}){
           </div>
         </div>
       </div>
-      {gameMode==='double'&&<div style={{maxHeight:180,overflowY:'auto',marginBottom:10}}>
-        {missions.map((m,i)=>(
-          <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}} onClick={()=>setMissions(ms=>ms.map((mm,j)=>j===i?{...mm,enabled:!mm.enabled}:mm))}>
-            <div style={{width:18,height:18,borderRadius:4,background:m.enabled?'var(--green)':'var(--surface)',border:`1px solid ${m.enabled?'var(--green)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}}>
-              {m.enabled&&<span style={{fontSize:10,color:'white'}}><Icon name="check" size={10}/></span>}
+      {gameMode==='double'&&<div style={{marginBottom:10}}>
+        <div style={{fontSize:11,color:'var(--muted)',marginBottom:6}}>
+          今回は固定の24ミッションを使用します。将来版ではここを選択式に拡張できるよう、難易度データを保持しています。
+        </div>
+        <div style={{maxHeight:180,overflowY:'auto',border:'1px solid var(--border)',borderRadius:18,background:'var(--surface)',padding:'6px 12px'}}>
+          {missions.map(m=>(
+            <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'1px solid var(--border)'}}>
+              <div style={{width:18,height:18,borderRadius:4,background:'var(--green)',border:'1px solid var(--green)',display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}}>
+                <span style={{fontSize:10,color:'white'}}><Icon name="check" size={10}/></span>
+              </div>
+              <span style={{fontSize:11,flex:1}}><span className="icon-chip"><MissionIcon name={m.icon} size={14}/>{m.text}</span></span>
+              <span className="chip" style={{fontSize:10,padding:'3px 8px',borderColor:m.difficulty===3?'rgba(230,0,18,.25)':m.difficulty===2?'rgba(243,151,0,.25)':'rgba(0,166,214,.25)',color:m.difficulty===3?'var(--red)':m.difficulty===2?'var(--orange)':'var(--cyan)',background:m.difficulty===3?'rgba(230,0,18,.08)':m.difficulty===2?'rgba(243,151,0,.08)':'rgba(0,166,214,.08)'}}>
+                難易度 {m.difficulty}
+              </span>
             </div>
-            <span style={{fontSize:11}}><span className="icon-chip"><MissionIcon name={m.icon} size={14}/>{m.text}</span></span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>}
       <p className="sec">将来拡張用の任意項目</p>
       <input className="sinp sm" placeholder="ゴール駅" value={goalStation} onChange={e=>setGoalStation(e.target.value)}/>
