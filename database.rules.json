@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "games_v6": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "$code.matches(/^[A-Z0-9]{6}$/)"
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
