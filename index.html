@@ -1642,6 +1642,39 @@ function StartScreen({onOrganizer,onPlayer}){
       </div>
       <button className="btn pri" onClick={onOrganizer}><span className="icon-chip"><Icon name="play" size={16}/>新しいゲームを作る（主催者）</span></button>
       <button className="btn sec" style={{marginTop:10}} onClick={onPlayer}><span className="icon-chip"><Icon name="train" size={16}/>コードで参加する（プレイヤー）</span></button>
+      <div style={{marginTop:18,textAlign:'center',fontSize:10,color:'var(--muted)'}}>
+        <a href="/terms.html" target="_blank" rel="noopener" style={{color:'var(--muted)',textDecoration:'underline'}}>利用規約</a>
+        <span style={{margin:'0 6px'}}>/</span>
+        <a href="/privacy.html" target="_blank" rel="noopener" style={{color:'var(--muted)',textDecoration:'underline'}}>プライバシーポリシー</a>
+      </div>
+    </div>
+  </div>;
+}
+
+// ── CONSENT MODAL ──
+const CONSENT_VERSION='1.0';
+function hasConsent(){try{return JSON.parse(localStorage.getItem('tm_consent')||'null')?.v===CONSENT_VERSION}catch(e){return false}}
+function saveConsent(){try{localStorage.setItem('tm_consent',JSON.stringify({v:CONSENT_VERSION,at:Date.now()}))}catch(e){}}
+function ConsentModal({onAccept}){
+  const [checked,setChecked]=useState(false);
+  return<div className="center-overlay" style={{zIndex:900}}>
+    <div className="modal">
+      <div style={{textAlign:'center',marginBottom:14}}>
+        <div style={{fontFamily:'Barlow Condensed',fontSize:32,letterSpacing:3,color:'var(--accent)',lineHeight:1.1,marginBottom:4}}>METRO RUN</div>
+        <div style={{fontSize:13,fontWeight:700,marginTop:10}}>ご利用にあたって</div>
+      </div>
+      <div style={{fontSize:12,color:'var(--muted)',lineHeight:1.8,marginBottom:14}}>
+        本サービスをご利用いただくには、利用規約とプライバシーポリシーへの同意が必要です。内容を必ずご確認ください。
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:14,padding:'10px 12px',background:'var(--surface-sub)',borderRadius:12,border:'1px solid var(--border)'}}>
+        <a href="/terms.html" target="_blank" rel="noopener" style={{fontSize:12,color:'var(--accent)',textDecoration:'underline'}}>→ 利用規約を読む</a>
+        <a href="/privacy.html" target="_blank" rel="noopener" style={{fontSize:12,color:'var(--accent)',textDecoration:'underline'}}>→ プライバシーポリシーを読む</a>
+      </div>
+      <label style={{display:'flex',alignItems:'flex-start',gap:8,fontSize:12,cursor:'pointer',marginBottom:14,lineHeight:1.6}}>
+        <input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)} style={{marginTop:3,flexShrink:0}}/>
+        <span>利用規約およびプライバシーポリシーを確認し、同意します。</span>
+      </label>
+      <button className="btn pri" disabled={!checked} style={{opacity:checked?1:.4,cursor:checked?'pointer':'not-allowed'}} onClick={()=>{saveConsent();onAccept()}}>同意して始める</button>
     </div>
   </div>;
 }
@@ -1744,6 +1777,7 @@ function App(){
   const [showShare,setShowShare]=useState(false);
   const [nowTs,setNowTs]=useState(Date.now());
   const [sessionReady,setSessionReady]=useState(false);
+  const [consent,setConsent]=useState(()=>hasConsent());
   const unsubRef=useRef(null);
 
   useEffect(()=>{
@@ -1792,6 +1826,7 @@ function App(){
   },[showToast]);
 
   useEffect(()=>{
+    if(!consent)return;
     let mounted=true;
     (async()=>{
       const session=loadSession();
@@ -1812,7 +1847,7 @@ function App(){
       setSessionReady(true);
     })();
     return()=>{mounted=false};
-  },[subGame]);
+  },[subGame,consent]);
 
   const handleCreateGame=useCallback(async(form,missions)=>{
     const gs=initGame(form,missions);
@@ -2030,6 +2065,9 @@ function App(){
     if(isAdmin)return;
     if(!playerTabs.find(item=>item.id===tab))setTab('home');
   },[isAdmin,playerTabs,tab]);
+
+  // 同意ゲート
+  if(!consent)return<ConsentModal onAccept={()=>setConsent(true)}/>;
 
   // スタート画面
   if(!sessionReady)return<div className="loading"><div className="spinner"></div><div style={{fontSize:12,color:'var(--muted)'}}>セッションを確認しています...</div></div>;
