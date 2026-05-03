@@ -511,7 +511,7 @@ const DEFAULT_MISSIONS=[
   {id:'m07',difficulty:1,text:'坂の案内板を撮影',evidence:'坂名の案内板写真',icon:'slope'},
   {id:'m08',difficulty:1,text:'酒を飲んだ写真を撮る ※飲みたい人だけで可',evidence:'乾杯または飲み物の写真',icon:'toast'},
   {id:'m09',difficulty:2,text:'50年以上続く老舗を訪問',evidence:'店舗外観と創業年が分かる情報',icon:'lantern'},
-  {id:'m10',difficulty:2,text:'美術館・博物館やご当地など会場限定クリアファイルを購入 ※購入先は相手と相談（小売の買取）',evidence:'購入物と購入場所が分かる写真',icon:'frame'},
+  {id:'m10',difficulty:2,text:'美術館・博物館やご当地など会場限定クリアファイルを購入',evidence:'購入物と購入場所が分かる写真',icon:'frame'},
   {id:'m11',difficulty:2,text:'東西南北が入った駅',evidence:'駅名看板の写真',icon:'target'},
   {id:'m12',difficulty:2,text:'漢数字が入った駅',evidence:'駅名看板の写真',icon:'note'},
   {id:'m13',difficulty:2,text:'アパホテルの前で写真を撮る',evidence:'ホテル名が写る外観写真',icon:'camera'},
@@ -712,7 +712,9 @@ function calcScore(team,config){
   const msR=new Set(team.missionReached||[]);
   const stBingo=checkBingo(canonicalStationCard,stR);
   const msBingo=checkBingo(team.missionCard,msR);
-  const stMasks=(team.stationReached||[]).filter(id=>id!=='FREE').length;
+  // 盤面に存在する駅のみカウントする（盤面外の駅に到着しても +1pt しない）
+  const cardStationIds=new Set((canonicalStationCard||[]).filter(c=>c&&!c.isFree).map(c=>c.id));
+  const stMasks=(team.stationReached||[]).filter(id=>id!=='FREE'&&cardStationIds.has(id)).length;
   const msMasks=(team.missionReached||[]).filter(id=>id!=='FREE').length;
   const gp=(team.goalPenalty||0)+(team.manualScoreDelta||0);
   const stPoints=stMasks+stBingo.length*3;
