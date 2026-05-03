@@ -989,8 +989,11 @@ function buildDemoGameState(){
   const teams=createTeams(2,config,DEFAULT_MISSIONS).map((t,i)=>i===0?{...t,currentStation:'otemachi',stationReached:['FREE','otemachi']}:t);
   const participant={...createParticipant('テストプレイヤー','assigned'),teamId:teams[0].id};
   const startedAt=Date.now();
-  const startAt=new Date(startedAt).toISOString().slice(0,16);
-  const endAt=new Date(startedAt+DEFAULT_GAME_DURATION_MS).toISOString().slice(0,16);
+  // datetime-local 形式（YYYY-MM-DDTHH:MM）。toISOString() は UTC を返してしまい、
+  // 後で new Date() がローカル時刻として解釈すると TZ ずれで即時終了判定に入るため自前でフォーマットする。
+  const fmt=d=>{const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;};
+  const startAt=fmt(new Date(startedAt));
+  const endAt=fmt(new Date(startedAt+DEFAULT_GAME_DURATION_MS));
   const base={
     gameCode:'DEMO00',version:'v7',title:'デモ大会（テストプレイ）',
     state:'in_progress',startAt,endAt,startedAt,finishedAt:null,
