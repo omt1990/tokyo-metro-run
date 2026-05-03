@@ -981,6 +981,29 @@ function initGame(form,missions){
   return appendAuditLog(base,'system',`大会「${form.title}」を作成`);
 }
 
+// ?demo=1 でアクセスされた場合のローカル限定テスト用 state。Firebase には書き込まない。
+const IS_DEMO=typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('demo')==='1';
+function buildDemoGameState(){
+  const config={mode:'double',routeMode:'metro',gameDuration:DEFAULT_GAME_DURATION_MS,
+    teamCount:2,playerLimit:8,goalEnabled:false,goalAmount:0,version:'v7'};
+  const teams=createTeams(2,config,DEFAULT_MISSIONS).map((t,i)=>i===0?{...t,currentStation:'otemachi',stationReached:['FREE','otemachi']}:t);
+  const participant={...createParticipant('テストプレイヤー','assigned'),teamId:teams[0].id};
+  const startedAt=Date.now();
+  const startAt=new Date(startedAt).toISOString().slice(0,16);
+  const endAt=new Date(startedAt+DEFAULT_GAME_DURATION_MS).toISOString().slice(0,16);
+  const base={
+    gameCode:'DEMO00',version:'v7',title:'デモ大会（テストプレイ）',
+    state:'in_progress',startAt,endAt,startedAt,finishedAt:null,
+    startStationId:'otemachi',startStationName:'大手町',
+    organizer:{id:'demo'},config,extras:{},
+    rules:{custom:'ローカル限定のテストプレイ。Firebaseには何も書き込まれません。'},
+    missions:DEFAULT_MISSIONS,
+    participants:[participant],
+    teams,events:[],auditLogs:[],
+  };
+  return{state:hydrateTeamMembers(base),participantId:participant.id};
+}
+
 // ── RULE SCREEN ──
 function RuleScreen({gameState,onClose,requireConfirm=false}){
   const config=gameState?.config;
@@ -1486,9 +1509,7 @@ function OrganizerSetup({onCreateGame,onBack}){
   const [teamCount,setTeamCount]=useState(2);
   const [goalEnabled,setGoalEnabled]=useState(false);
   const [missions,setMissions]=useState(DEFAULT_MISSIONS.map(m=>({...m,enabled:true})));
-  const [events,setEvents]=useState([
-    {id:'e1',name:'ライブ会場キャパ対決',desc:'午前中に最大収容人数のライブ会場を発見！13:00に合流して発表',type:'time',scheduledTime:'13:00',reward:'任意1マス',status:'pending',triggeredAt:null},
-  ]);
+  const [events,setEvents]=useState([]);
   const [goalStation,setGoalStation]=useState('');
   const [goalCondition,setGoalCondition]=useState('');
   const [meetupPoint,setMeetupPoint]=useState('');
@@ -1753,8 +1774,20 @@ function App(){
   const [showShare,setShowShare]=useState(false);
   const [nowTs,setNowTs]=useState(Date.now());
   const [sessionReady,setSessionReady]=useState(false);
-  const [consent,setConsent]=useState(()=>hasConsent());
+  const [consent,setConsent]=useState(()=>IS_DEMO||hasConsent());
   const unsubRef=useRef(null);
+
+  // ?demo=1 起動時に in-memory のデモ大会へ即着地。Firebase は触らない。
+  useEffect(()=>{
+    if(!IS_DEMO)return;
+    const {state,participantId}=buildDemoGameState();
+    setGameState(state);
+    setMyParticipantId(participantId);
+    setIsAdmin(false);
+    setScreen('game');
+    setTab('bingo');
+    setSessionReady(true);
+  },[]);
 
   useEffect(()=>{
     const iv=setInterval(()=>{
@@ -1777,7 +1810,9 @@ function App(){
           next=appendAuditLog({...next,state:'finished',finishedAt:isoNow()},'system','大会を自動終了');
         }
         if(!changed)return prev;
-        const gs=hydrateTeamMembers(next);fbSave(gs.gameCode,gs);return gs;
+        const gs=hydrateTeamMembers(next);
+        if(!IS_DEMO)fbSave(gs.gameCode,gs);
+        return gs;
       });
     },TICK_INTERVAL_MS);
     return()=>clearInterval(iv);
@@ -1802,6 +1837,7 @@ function App(){
   },[showToast]);
 
   useEffect(()=>{
+    if(IS_DEMO)return;
     if(!consent)return;
     let mounted=true;
     (async()=>{
@@ -1855,7 +1891,7 @@ function App(){
 
   const save=useCallback(async(newGs)=>{
     const hydrated=hydrateTeamMembers(newGs);
-    await fbSave(hydrated.gameCode,hydrated);
+    if(!IS_DEMO)await fbSave(hydrated.gameCode,hydrated);
     setGameState(hydrated);
   },[]);
 
@@ -2029,6 +2065,9 @@ function App(){
   if(screen==='start')return<>
     <Toast toasts={toasts}/>
     <StartScreen onOrganizer={()=>setScreen('organizer')} onPlayer={()=>setScreen('player')}/>
+    <div style={{position:'fixed',bottom:16,left:16}}>
+      <a href="?demo=1" className="btn ghost" style={{fontSize:10,color:'var(--muted)',padding:'4px 8px',margin:0,width:'auto',textDecoration:'none',display:'inline-flex'}}><span className="icon-chip"><Icon name="play" size={12}/>テストプレイ</span></a>
+    </div>
     <div style={{position:'fixed',bottom:16,right:16}}>
       <button className="btn ghost" style={{fontSize:10,color:'var(--muted)',padding:'4px 8px',margin:0,width:'auto'}} onClick={()=>setScreen('adminJoin')}><span className="icon-chip"><Icon name="lock" size={12}/>運営</span></button>
     </div>
@@ -2068,6 +2107,7 @@ function App(){
     <div className="hdr">
       <div className="logo">METRO RUN</div>
       <div style={{display:'flex',alignItems:'center',gap:8}}>
+        {IS_DEMO&&<span className="chip" style={{background:'rgba(245,197,24,.15)',color:'var(--yellow)',border:'1px solid rgba(245,197,24,.4)'}}>DEMO</span>}
         {isAdmin&&<div style={{background:'var(--surface-sub)',border:'1px solid var(--border)',borderRadius:20,padding:'4px 10px',fontSize:10,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowShare(true)}>
           <span>招待コード</span><span style={{fontSize:9,color:'var(--muted)'}}><Icon name="share" size={11}/></span>
         </div>}
