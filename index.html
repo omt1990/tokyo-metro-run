@@ -1486,9 +1486,7 @@ function OrganizerSetup({onCreateGame,onBack}){
   const [teamCount,setTeamCount]=useState(2);
   const [goalEnabled,setGoalEnabled]=useState(false);
   const [missions,setMissions]=useState(DEFAULT_MISSIONS.map(m=>({...m,enabled:true})));
-  const [events,setEvents]=useState([
-    {id:'e1',name:'ライブ会場キャパ対決',desc:'午前中に最大収容人数のライブ会場を発見！13:00に合流して発表',type:'time',scheduledTime:'13:00',reward:'任意1マス',status:'pending',triggeredAt:null},
-  ]);
+  const [events,setEvents]=useState([]);
   const [goalStation,setGoalStation]=useState('');
   const [goalCondition,setGoalCondition]=useState('');
   const [meetupPoint,setMeetupPoint]=useState('');
