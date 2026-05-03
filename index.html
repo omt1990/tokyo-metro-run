@@ -77,21 +77,14 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-
 .score-row .val.neg{color:var(--red)}
 .mission-item{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:11px;margin-bottom:7px;cursor:pointer;display:flex;align-items:flex-start;gap:9px}
 .mission-item.done{border-color:var(--green);background:rgba(0,166,80,.06)}
-.mission-item.pend{border-color:var(--orange);background:rgba(246,139,30,.06)}
 .mn{font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--muted);flex-shrink:0;width:22px;line-height:1}
-.mission-item.done .mn{color:var(--green)}.mission-item.pend .mn{color:var(--orange)}
+.mission-item.done .mn{color:var(--green)}
 .mb2{flex:1}
 .mt{font-size:11px;font-weight:700;line-height:1.5}
 .me{font-size:10px;color:var(--muted);margin-top:2px}
 .ms-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;flex-shrink:0;margin-top:2px}
 .ms-none{background:var(--surface-sub);color:var(--muted);border:1px solid var(--border)}
-.ms-pend{background:rgba(246,139,30,.15);color:var(--orange)}
 .ms-done{background:rgba(0,166,80,.15);color:var(--green)}
-.ms-rej{background:rgba(230,0,18,.15);color:var(--red)}
-.photo-area{border:1.5px dashed var(--border);border-radius:18px;padding:14px;text-align:center;cursor:pointer;position:relative;overflow:hidden;background:var(--surface)}
-.photo-area.has{border-color:var(--green);border-style:solid}
-.photo-preview{width:100%;max-height:160px;object-fit:cover;border-radius:12px;display:block}
-.photo-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .btn{padding:12px;border-radius:14px;border:none;font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;width:100%;margin-top:8px}
 .btn.pri{background:var(--accent);color:#fff}
 .btn.grn{background:var(--green);color:#fff}
@@ -235,31 +228,22 @@ firebase.initializeApp({
 const _db=firebase.database();
 const _auth=firebase.auth();
 const _authReady=_auth.signInAnonymously().catch(e=>{console.error('auth failed',e);throw e});
-function stripPhotos(s){
-  const r=JSON.parse(JSON.stringify(s));
-  r.teams=(r.teams||[]).map(t=>({...t,logs:(t.logs||[]).map(l=>({...l,photo:l.photo?'__local__':null}))}));
-  if(r.pendingApprovals)r.pendingApprovals=r.pendingApprovals.map(a=>({...a,photo:a.photo?'__local__':null}));
-  return r;
-}
-function savePhotos(code,s){
-  const p={};
-  (s.teams||[]).forEach(t=>(t.logs||[]).forEach((l,i)=>{if(l.photo&&l.photo!=='__local__')p[`l_${t.id}_${i}`]=l.photo}));
-  (s.pendingApprovals||[]).forEach(a=>{if(a.photo&&a.photo!=='__local__')p[`a_${a.id}`]=a.photo});
-  try{localStorage.setItem(`ph_${code}`,JSON.stringify(p))}catch(e){}
-}
-function mergePhotos(code,s){
-  let p={};try{p=JSON.parse(localStorage.getItem(`ph_${code}`)||'{}')}catch(e){}
-  const r=JSON.parse(JSON.stringify(s));
-  r.teams=(r.teams||[]).map(t=>({...t,logs:(t.logs||[]).map((l,i)=>({...l,photo:l.photo==='__local__'?(p[`l_${t.id}_${i}`]||null):l.photo}))}));
-  if(r.pendingApprovals)r.pendingApprovals=r.pendingApprovals.map(a=>({...a,photo:a.photo==='__local__'?(p[`a_${a.id}`]||null):a.photo}));
-  return r;
-}
 function saveSession(session){try{localStorage.setItem('metro_run_session',JSON.stringify(session))}catch(e){}}
 function loadSession(){try{return JSON.parse(localStorage.getItem('metro_run_session')||'null')}catch(e){return null}}
 function clearSession(){try{localStorage.removeItem('metro_run_session')}catch(e){}}
-async function fbSave(code,s){await _authReady;await _db.ref(`games_v6/${code}`).set(stripPhotos(s));savePhotos(code,s)}
-async function fbLoad(code){await _authReady;const snap=await _db.ref(`games_v6/${code}`).get();if(!snap.exists())return null;return mergePhotos(code,snap.val())}
-function fbSub(code,cb){let ref=null;let active=true;_authReady.then(()=>{if(!active)return;ref=_db.ref(`games_v6/${code}`);ref.on('value',snap=>{if(snap.exists())cb(mergePhotos(code,snap.val()))})});return()=>{active=false;if(ref)ref.off('value')}}
+async function fbSave(code,s){await _authReady;await _db.ref(`games_v6/${code}`).set(s)}
+async function fbLoad(code){await _authReady;const snap=await _db.ref(`games_v6/${code}`).get();if(!snap.exists())return null;return snap.val()}
+function fbSub(code,cb){let ref=null;let active=true;_authReady.then(()=>{if(!active)return;ref=_db.ref(`games_v6/${code}`);ref.on('value',snap=>{if(snap.exists())cb(snap.val())})});return()=>{active=false;if(ref)ref.off('value')}}
+
+// ── CONSTANTS ──
+const BOARD_DIM=5;
+const BOARD_SIZE=BOARD_DIM*BOARD_DIM;        // 25マス
+const CENTER_INDEX=Math.floor(BOARD_SIZE/2); // FREEマスの位置（12）
+const DEFAULT_GAME_DURATION_MS=8*60*60*1000; // 既定の大会時間 8h
+const ENDING_THRESHOLD_MS=30*60*1000;        // タイマーが赤点滅・相手非表示モードに切り替わる残り時間
+const OPPONENT_VIEW_RATIO=0.25;              // 残り時間がこの比率を下回ったら相手チームを非表示
+const TOAST_DURATION_MS=3500;
+const TICK_INTERVAL_MS=1000;
 
 // ── DATA ──
 const TEAM_COLORS=['#e60012','#f68b1e','#f5c518','#00a650','#00b2d6','#8f76d6','#e8508a','#009bbf'];
@@ -606,11 +590,11 @@ function allocateDifficultySlots(pools,usedIds){
   return selected;
 }
 function placeStationsOnBoard(corners,normal){
-  const card=new Array(25).fill(null);
-  card[12]={id:'FREE',name:'FREE',line:null,isFree:true};
+  const card=new Array(BOARD_SIZE).fill(null);
+  card[CENTER_INDEX]={id:'FREE',name:'FREE',line:null,isFree:true};
   let ci=0,ni=0;
-  for(let i=0;i<25;i++){
-    if(i===12)continue;
+  for(let i=0;i<BOARD_SIZE;i++){
+    if(i===CENTER_INDEX)continue;
     card[i]=CORNER_INDICES.includes(i)?corners[ci++]:normal[ni++];
   }
   return card;
@@ -723,6 +707,14 @@ function calcScore(team,config){
 function genCode(){return Math.random().toString(36).substr(2,6).toUpperCase()}
 function nowTime(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
 function isoNow(){return new Date().toISOString()}
+
+// 監査ログ／チームログを追記する小ヘルパー。同じ shape を複数の handler で書いていたため共通化。
+function appendAuditLog(gs,type,message){
+  return{...gs,auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type,time:nowTime(),message}]};
+}
+function appendTeamLog(team,partial){
+  return{...team,logs:[...(team.logs||[]),{time:nowTime(),...partial}]};
+}
 function createParticipant(name,status='joined'){
   const ts=Date.now();
   const now=isoNow();
@@ -919,8 +911,9 @@ function buildRuleSummary(gameState){
   const lines=[
     'トランプを1枚引き、出た数だけ上りか下りを選んで移動します。',
     '路線の端まで来たら折り返します。',
-    '到着した駅は写真付きで記録してください。',
+    '到着した駅を記録してください。',
     'ミッションは1駅につき1件まで記録できます。',
+    '証拠の写真などはLINEグループに残してください。',
     cfg.mode==='double'
       ?'ダブルビンゴは駅ビンゴとミッションビンゴを同時進行します。'
       :'ベーシックは駅ビンゴのみで進行します。',
@@ -940,7 +933,7 @@ function initGame(form,missions){
   const cfg=form.config;
   const teams=createTeams(cfg.teamCount, cfg, missions);
   const code=genCode();
-  return hydrateTeamMembers({
+  const base=hydrateTeamMembers({
     gameCode:code,
     version:'v7',
     title:form.title,
@@ -952,7 +945,7 @@ function initGame(form,missions){
     startStationId:form.startStationId,
     startStationName:form.startStationName,
     organizer:{id:'org1'},
-    config:{mode:cfg.mode,routeMode:cfg.routeMode,gameDuration:cfg.gameDuration||8*60*60*1000,
+    config:{mode:cfg.mode,routeMode:cfg.routeMode,gameDuration:cfg.gameDuration||DEFAULT_GAME_DURATION_MS,
       goalEnabled:cfg.goalEnabled||false,goalAmount:cfg.goalAmount||-5,
       teamCount:cfg.teamCount||2,playerLimit:cfg.playerLimit||8,version:'v7'},
     extras:{
@@ -960,19 +953,15 @@ function initGame(form,missions){
       goalCondition:form.goalCondition||'',
       meetupPoint:form.meetupPoint||'',
       meetupTime:form.meetupTime||'',
-      events:form.extraEvents||[],
-      timedEvents:form.timedEvents||[],
-      battleEvents:form.battleEvents||[],
-      retentionDays:null,
     },
     rules:{custom:form.customRules||''},
     missions:missions||DEFAULT_MISSIONS,
     participants:[],
     teams,
     events:form.events||[],
-    pendingApprovals:[],
-    auditLogs:[{id:`audit_${Date.now()}`,type:'system',time:nowTime(),message:`大会「${form.title}」を作成`}],
+    auditLogs:[],
   });
+  return appendAuditLog(base,'system',`大会「${form.title}」を作成`);
 }
 
 // ── RULE SCREEN ──
@@ -1141,7 +1130,6 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
           <div className="lb">
             <div className="lt">{log.title}</div>
             <div className="ls">{log.sub}</div>
-            {log.photo&&<img src={log.photo} style={{width:'100%',maxHeight:70,objectFit:'cover',borderRadius:5,marginTop:5}} alt=""/>}
           </div>
           <div className="ltm">{log.time}</div>
         </div>
@@ -1155,8 +1143,6 @@ function ArrivalPage({team,config,onArrive}){
   const [selLine,setSelLine]=useState(null);
   const [search,setSearch]=useState('');
   const [sel,setSel]=useState(null);
-  const [photoPreview,setPhotoPreview]=useState(null);
-  const fileRef=useRef();
   const reached=new Set(team.stationReached||[]);
   const cardIds=new Set((team.stationCard||[]).map(c=>c.id));
   const pool=useMemo(()=>getPool(config?.routeMode||'metro'),[config?.routeMode]);
@@ -1194,14 +1180,7 @@ function ArrivalPage({team,config,onArrive}){
         </button>;
       })}
     </div>
-    {sel&&<>
-      <p className="sec" style={{marginTop:12}}>到着証拠写真（駅名看板を写してください）</p>
-      <div className={`photo-area ${photoPreview?'has':''}`} onClick={()=>fileRef.current.click()}>
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="photo-input" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhotoPreview(ev.target.result);r.readAsDataURL(f);}}/>
-        {photoPreview?<><img src={photoPreview} className="photo-preview" alt="証拠"/><div style={{fontSize:10,color:'var(--green)',marginTop:5}} className="icon-chip"><Icon name="check" size={12}/>写真添付済み</div></>:<><div style={{fontSize:26,marginBottom:5}}><Icon name="camera" size={28}/></div><div style={{fontSize:11,color:'var(--muted)'}}>駅名看板の写真を添付（推奨）</div></>}
-      </div>
-    </>}
-    <button className={`btn ${sel?'grn':'sec'}`} style={{marginTop:10}} onClick={()=>{if(!sel)return;onArrive(sel,photoPreview);setSel(null);setPhotoPreview(null);setSearch('');}} disabled={!sel}>
+    <button className={`btn ${sel?'grn':'sec'}`} style={{marginTop:10}} onClick={()=>{if(!sel)return;onArrive(sel);setSel(null);setSearch('');}} disabled={!sel}>
       {sel?<span className="icon-chip"><Icon name="pin" size={16}/>{sel.name}に到着！</span>:'駅を選んでください'}
     </button>
   </div>;
@@ -1210,16 +1189,14 @@ function ArrivalPage({team,config,onArrive}){
 // ── MISSION PAGE ──
 function MissionPage({team,onSubmitMission}){
   const [sel,setSel]=useState(null);
-  const [photo,setPhoto]=useState(null);
   const [note,setNote]=useState('');
-  const fileRef=useRef();
   const msR=new Set(team.missionReached||[]);
   const cardMissions=(team.missionCard||[]).filter(c=>!c.isFree);
   const currentStationId=team.currentStation||null;
   const usedMissionId=currentStationId?(team.missionStationClaims||{})[currentStationId]:null;
   const canSubmitAtCurrentStation=!!currentStationId&&!usedMissionId;
   if(sel)return<div>
-    <button onClick={()=>{setSel(null);setPhoto(null);setNote('');}} className="btn ghost" style={{marginTop:0,marginBottom:8,textAlign:'left'}}>← 一覧に戻る</button>
+    <button onClick={()=>{setSel(null);setNote('');}} className="btn ghost" style={{marginTop:0,marginBottom:8,textAlign:'left'}}>← 一覧に戻る</button>
     <div style={{background:'var(--surface-sub)',borderRadius:18,padding:12,marginBottom:12,border:'1px solid var(--border)'}}>
       <div style={{fontSize:22,marginBottom:6}}><MissionIcon name={sel.icon} size={24}/></div>
       <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>{sel.text}</div>
@@ -1230,14 +1207,12 @@ function MissionPage({team,onSubmitMission}){
         ?`現在地の駅で記録します${usedMissionId?'（この駅ではすでに1件記録済み）':''}`
         :'先に到着タブで駅到着を記録してください'}
     </div>
-    <p className="sec">証拠写真（任意）</p>
-    <div className={`photo-area ${photo?'has':''}`} onClick={()=>fileRef.current.click()}>
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="photo-input" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}}/>
-      {photo?<><img src={photo} className="photo-preview" alt="証拠"/><div style={{fontSize:10,color:'var(--green)',marginTop:5}} className="icon-chip"><Icon name="check" size={12}/>写真添付済み</div></>:<><div style={{fontSize:26,marginBottom:5}}><Icon name="camera" size={28}/></div><div style={{fontSize:11,color:'var(--muted)'}}>証拠写真を撮影または選択</div></>}
+    <div style={{background:'rgba(0,166,80,.08)',border:'1px solid var(--green)',borderRadius:10,padding:'8px 10px',marginBottom:10,fontSize:11,lineHeight:1.6}}>
+      証拠の写真はLINEグループに送ってください。
     </div>
-    <input className="sinp" style={{marginTop:10}} placeholder="補足メモ（任意）" value={note} onChange={e=>setNote(e.target.value)}/>
-    <button className={`btn ${canSubmitAtCurrentStation?'pri':'sec'}`} disabled={!canSubmitAtCurrentStation} onClick={()=>{if(!canSubmitAtCurrentStation)return;onSubmitMission(sel.id,photo,note);setSel(null);setPhoto(null);setNote('');}}>
-      <span className="icon-chip"><Icon name="share" size={15}/>{photo?'写真付きで申請する':'この内容で申請する'}</span>
+    <input className="sinp" placeholder="補足メモ（任意）" value={note} onChange={e=>setNote(e.target.value)}/>
+    <button className={`btn ${canSubmitAtCurrentStation?'pri':'sec'}`} disabled={!canSubmitAtCurrentStation} onClick={()=>{if(!canSubmitAtCurrentStation)return;onSubmitMission(sel.id,note);setSel(null);setNote('');}}>
+      <span className="icon-chip"><Icon name="share" size={15}/>この内容で記録する</span>
     </button>
   </div>;
   return<div>
@@ -1319,9 +1294,7 @@ function ScorePage({gameState,myTeamId,isFinished}){
     <div>{[...(myTeam.logs||[])].reverse().map((log,i)=>(
       <div key={i} className="li">
         <div className={`lic ${log.type}`}><LogIcon type={log.type}/></div>
-        <div className="lb"><div className="lt">{log.title}</div><div className="ls">{log.sub}</div>
-          {log.photo&&<img src={log.photo} style={{width:'100%',maxHeight:70,objectFit:'cover',borderRadius:5,marginTop:5}} alt=""/>}
-        </div>
+        <div className="lb"><div className="lt">{log.title}</div><div className="ls">{log.sub}</div></div>
         <div className="ltm">{log.time}</div>
       </div>
     ))}</div>
@@ -1329,7 +1302,7 @@ function ScorePage({gameState,myTeamId,isFinished}){
 }
 
 // ── ADMIN PAGE ──
-function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApproveParticipant,onRejectParticipant,onAssignParticipant,onRenameTeam,onSetTeamColor,onChangeGameState,onAutoAssign,onUpdateConfig,onAdjustScore}){
+function AdminPage({gameState,onFireEvent,onAddEvent,onApproveParticipant,onRejectParticipant,onAssignParticipant,onRenameTeam,onSetTeamColor,onChangeGameState,onAutoAssign,onUpdateConfig,onAdjustScore}){
   const [tab,setTab]=useState('participants');
   const [newEv,setNewEv]=useState({name:'',desc:'',type:'manual',scheduledTime:'',reward:''});
   const config=gameState.config;
@@ -1411,27 +1384,6 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
           </div>
         </div>
       ))}
-      <p className="sec">ミッション承認</p>
-      <div className="empty">ミッションは申請後すぐ反映されます</div>
-      {(gameState.pendingApprovals||[]).length===0?null:(gameState.pendingApprovals||[]).map((appr,i)=>{
-        const team=(gameState.teams||[]).find(t=>t.id===appr.teamId);
-        const missions=gameState.missions||DEFAULT_MISSIONS;
-        const mission=missions.find(m=>m.id===appr.missionId);
-        return<div key={i} className="appr-item">
-          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-            <div className="dot" style={{background:team?.color||'#888',width:10,height:10}}></div>
-            <div style={{fontWeight:700,fontSize:11}}>{team?.name||'不明'}</div>
-            <div style={{fontSize:10,color:'var(--muted)',marginLeft:'auto'}}>{appr.time}</div>
-          </div>
-          <div style={{fontSize:12,fontWeight:700,marginBottom:6}}><span className="icon-chip"><MissionIcon name={mission?.icon} size={15}/>{mission?.text}</span></div>
-          {appr.photo&&<img src={appr.photo} style={{width:'100%',maxHeight:180,objectFit:'cover',borderRadius:8,marginBottom:6}} alt=""/>}
-          {appr.note&&<div style={{fontSize:11,color:'var(--muted)',marginBottom:6}}>メモ：{appr.note}</div>}
-          <div className="appr-btns">
-            <button className="appr-btn appr-ok" onClick={()=>onApprove(appr)}><span className="icon-chip"><Icon name="check" size={12}/>承認</span></button>
-            <button className="appr-btn appr-ng" onClick={()=>onReject(appr)}><span className="icon-chip"><Icon name="close" size={12}/>却下</span></button>
-          </div>
-        </div>;
-      })}
     </>}
     {tab==='teams'&&<>
       {(gameState.teams||[]).map(team=>{
@@ -1506,7 +1458,7 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApprove,onReject,onApprov
 // ── ORGANIZER SETUP ──
 function OrganizerSetup({onCreateGame,onBack}){
   const now=new Date();
-  const plusHours=new Date(now.getTime()+8*60*60*1000);
+  const plusHours=new Date(now.getTime()+DEFAULT_GAME_DURATION_MS);
   const [gameMode,setGameMode]=useState('double');
   const [routeMode,setRouteMode]=useState('metro');
   const [title,setTitle]=useState('');
@@ -1526,12 +1478,20 @@ function OrganizerSetup({onCreateGame,onBack}){
   const [meetupTime,setMeetupTime]=useState('');
   const [customRules,setCustomRules]=useState('');
   const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState('');
 
   const enabledMissions=missions.filter(m=>m.enabled);
   const startPool=getPool(routeMode);
 
   const handleCreate=async()=>{
-    if(!title.trim()||!startAt||!endAt||!startStationId)return;
+    const missingFields=[];
+    if(!title.trim())missingFields.push('大会名');
+    if(!startAt)missingFields.push('開始時刻');
+    if(!endAt)missingFields.push('終了時刻');
+    if(!startStationId)missingFields.push('スタート駅');
+    if(missingFields.length){setErr(`${missingFields.join('・')} を入力してください`);return;}
+    if(new Date(endAt)<=new Date(startAt)){setErr('終了時刻は開始時刻より後にしてください');return;}
+    setErr('');
     setLoading(true);
     const cfg={mode:gameMode,routeMode,gameDuration:Math.max(1,new Date(endAt)-new Date(startAt)),
       teamCount,playerLimit,goalEnabled,goalAmount:goalEnabled?-5:0};
@@ -1602,9 +1562,7 @@ function OrganizerSetup({onCreateGame,onBack}){
         </div>
       </div>
       {gameMode==='double'&&<div style={{marginBottom:10}}>
-        <div style={{fontSize:11,color:'var(--muted)',marginBottom:6}}>
-          今回は固定の24ミッションを使用します。将来版ではここを選択式に拡張できるよう、難易度データを保持しています。
-        </div>
+        <p className="sec" style={{marginTop:0}}>ミッション選択</p>
         <div style={{maxHeight:180,overflowY:'auto',border:'1px solid var(--border)',borderRadius:18,background:'var(--surface)',padding:'6px 12px'}}>
           {missions.map(m=>(
             <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'1px solid var(--border)'}}>
@@ -1625,7 +1583,8 @@ function OrganizerSetup({onCreateGame,onBack}){
       <input className="sinp sm" placeholder="合流地点" value={meetupPoint} onChange={e=>setMeetupPoint(e.target.value)}/>
       <input className="sinp sm" placeholder="合流時間" value={meetupTime} onChange={e=>setMeetupTime(e.target.value)}/>
       <textarea className="sinp" placeholder="大会ごとの差分ルール" value={customRules} onChange={e=>setCustomRules(e.target.value)} style={{minHeight:80}}/>
-      <button className="btn pri" disabled={loading||!title.trim()||!startAt||!endAt||!startStationId} onClick={handleCreate}>
+      {err&&<div style={{fontSize:11,color:'var(--red)',marginTop:8,marginBottom:4}}>{err}</div>}
+      <button className="btn pri" disabled={loading} onClick={handleCreate}>
         {loading?'作成中...':<span className="icon-chip"><Icon name="play" size={15}/>ゲームコードを発行する</span>}
       </button>
     </div>
@@ -1798,19 +1757,19 @@ function App(){
         }
         if(next.state==='in_progress'&&next.endAt&&Date.now()>=new Date(next.endAt).getTime()){
           changed=true;
-          next={...next,state:'finished',finishedAt:isoNow(),auditLogs:[...(next.auditLogs||[]),{id:`audit_${Date.now()}`,type:'system',time:nowTime(),message:'大会を自動終了'}]};
+          next=appendAuditLog({...next,state:'finished',finishedAt:isoNow()},'system','大会を自動終了');
         }
         if(!changed)return prev;
         const gs=hydrateTeamMembers(next);fbSave(gs.gameCode,gs);return gs;
       });
-    },1000);
+    },TICK_INTERVAL_MS);
     return()=>clearInterval(iv);
   },[]);
 
   const showToast=useCallback((t)=>{
     const id=Date.now();
     setToasts(p=>[...p,{...t,id}]);
-    setTimeout(()=>setToasts(p=>p.filter(x=>x.id!==id)),3500);
+    setTimeout(()=>setToasts(p=>p.filter(x=>x.id!==id)),TOAST_DURATION_MS);
   },[]);
 
   const subGame=useCallback((code)=>{
@@ -1869,7 +1828,7 @@ function App(){
     const activeJoined=(gs.participants||[]).filter(p=>p.active!==false&&p.status!=='pending').length;
     const status=activeJoined>=(gs.config?.playerLimit||0)?'pending':'joined';
     const participant=createParticipant(playerName,status);
-    const updated=hydrateTeamMembers({...gs,participants:[...(gs.participants||[]),participant],auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'participant',time:nowTime(),message:`${playerName} が ${status==='pending'?'承認待ち':'参加'} で登録`} ]});
+    const updated=hydrateTeamMembers(appendAuditLog({...gs,participants:[...(gs.participants||[]),participant]},'participant',`${playerName} が ${status==='pending'?'承認待ち':'参加'} で登録`));
     await fbSave(code,updated);
     setGameState(updated);setMyParticipantId(participant.id);setScreen('game');setIsAdmin(false);setTab('home');
     saveSession({code,participantId:participant.id,isAdmin:false});
@@ -1893,30 +1852,28 @@ function App(){
   const myTeamId=currentParticipant?.teamId||null;
   const myTeam=gameState?.teams.find(t=>t.id===myTeamId)||null;
 
-  const handleArrive=useCallback(async(station,photo)=>{
+  const handleArrive=useCallback(async(station)=>{
     if(!myTeamId||!gameState||gameState.state!=='in_progress')return;
     const myTeam=gameState.teams.find(t=>t.id===myTeamId);
     if(!myTeam||(myTeam.stationReached||[]).includes(station.id)){showToast({type:'warn',icon:'alert',title:'既に記録済みです',sub:station.name});return;}
     const canonicalCard=getCanonicalStationCard(myTeam,gameState?.config?.routeMode||'metro');
     const newReached=[...(myTeam.stationReached||[]),station.id];
-    const reachedSet=new Set(newReached);
     const isOnCard=(canonicalCard||[]).some(c=>c.id===station.id);
-    const t=nowTime();
-    const log={type:'s',title:`${station.name}に到着`,sub:isOnCard?'ビンゴカードの駅！':'',time:t,photo:photo||null};
     const prevBingo=checkBingo(canonicalCard,new Set(myTeam.stationReached||[]));
-    const newBingo=checkBingo(canonicalCard,reachedSet);
-    let newLogs=[...(myTeam.logs||[]),log];
-    showToast({type:'ok',icon:'pin',title:`${station.name}に到着！`,sub:isOnCard?'ビンゴカードの駅！':''});
+    const newBingo=checkBingo(canonicalCard,new Set(newReached));
+    const arrivedSub=isOnCard?'ビンゴカードの駅！':'';
+    showToast({type:'ok',icon:'pin',title:`${station.name}に到着！`,sub:arrivedSub});
+    let nextTeam=appendTeamLog({...myTeam,stationReached:newReached,currentStation:station.id},{type:'s',title:`${station.name}に到着`,sub:arrivedSub});
     if(newBingo.length>prevBingo.length){
       const diff=newBingo.length-prevBingo.length;
       setTimeout(()=>showToast({type:'bingo',icon:'target',title:`BINGO! ${diff}列達成！`,sub:'スコアが上がりました！'}),500);
-      newLogs=[...newLogs,{type:'bingo',title:`駅ビンゴ達成！ ${diff}列`,sub:'スコア更新',time:t}];
+      nextTeam=appendTeamLog(nextTeam,{type:'bingo',title:`駅ビンゴ達成！ ${diff}列`,sub:'スコア更新'});
     }
-    const updated=gameState.teams.map(t2=>t2.id===myTeamId?{...t2,stationReached:newReached,logs:newLogs,currentStation:station.id}:t2);
+    const updated=gameState.teams.map(t=>t.id===myTeamId?nextTeam:t);
     await save({...gameState,teams:updated});setTab('bingo');
   },[myTeamId,gameState,showToast,save]);
 
-  const handleMissionSubmit=useCallback(async(missionId,photo,note)=>{
+  const handleMissionSubmit=useCallback(async(missionId,note)=>{
     if(!myTeamId||!gameState||gameState.state!=='in_progress')return;
     const updatedTeams=gameState.teams.map(t=>{
       if(t.id!==myTeamId)return t;
@@ -1928,74 +1885,54 @@ function App(){
       const missionText=(gameState.missions||DEFAULT_MISSIONS).find(m=>m.id===missionId)?.text||'';
       const stationName=getPool(gameState?.config?.routeMode||'metro').find(st=>st.id===t.currentStation)?.name||t.currentStation;
       const sub=note?`${missionText} / ${stationName} / ${note}`:`${missionText} / ${stationName}`;
-      let newLogs=[...(t.logs||[]),{type:'ms',title:'ミッション達成！',sub,time:nowTime(),photo:photo||null}];
-      if(newBingo.length>prevBingo.length){
-        const diff=newBingo.length-prevBingo.length;
-        newLogs=[...newLogs,{type:'bingo',title:`ミッションBINGO！ ${diff}列`,sub:'スコア更新',time:nowTime()}];
-      }
-      return{
+      let next=appendTeamLog({
         ...t,
         missionSubmissions:{...(t.missionSubmissions||{}),[missionId]:'completed'},
         missionStationClaims:{...(t.missionStationClaims||{}),[t.currentStation]:missionId},
         missionReached:newReached,
-        logs:newLogs,
-      };
+      },{type:'ms',title:'ミッション達成！',sub});
+      if(newBingo.length>prevBingo.length){
+        const diff=newBingo.length-prevBingo.length;
+        next=appendTeamLog(next,{type:'bingo',title:`ミッションBINGO！ ${diff}列`,sub:'スコア更新'});
+      }
+      return next;
     });
-    await save({...gameState,teams:updatedTeams,pendingApprovals:(gameState.pendingApprovals||[]).filter(a=>a.teamId!==myTeamId||a.missionId!==missionId)});
+    await save({...gameState,teams:updatedTeams});
     showToast({type:'ms',icon:'target',title:'ミッションを記録しました',sub:'1駅につき1件まで'});
   },[myTeamId,gameState,showToast,save]);
 
-  const handleApprove=useCallback(async(appr)=>{
-    const updatedTeams=gameState.teams.map(t=>{
-      if(t.id!==appr.teamId)return t;
-      const subs={...(t.missionSubmissions||{}),[appr.missionId]:'approved'};
-      const newReached=[...(t.missionReached||[]),appr.missionId];
-      const prevBingo=checkBingo(t.missionCard,new Set(t.missionReached||[]));
-      const newBingo=checkBingo(t.missionCard,new Set(newReached));
-      let newLogs=[...(t.logs||[]),{type:'ms',title:'ミッション承認！',sub:(gameState.missions||DEFAULT_MISSIONS).find(m=>m.id===appr.missionId)?.text||'',time:nowTime()}];
-      if(newBingo.length>prevBingo.length){const diff=newBingo.length-prevBingo.length;newLogs=[...newLogs,{type:'bingo',title:`ミッションBINGO！ ${diff}列`,sub:'スコア更新',time:nowTime()}];}
-      return{...t,missionSubmissions:subs,missionReached:newReached,logs:newLogs};
-    });
-    await save({...gameState,teams:updatedTeams,pendingApprovals:(gameState.pendingApprovals||[]).filter(a=>a.id!==appr.id)});
-    showToast({type:'ok',icon:'check',title:'承認しました',sub:''});
-  },[gameState,showToast,save]);
-
-  const handleReject=useCallback(async(appr)=>{
-    const updatedTeams=gameState.teams.map(t=>{if(t.id!==appr.teamId)return t;return{...t,missionSubmissions:{...(t.missionSubmissions||{}),[appr.missionId]:'rejected'}};});
-    await save({...gameState,teams:updatedTeams,pendingApprovals:(gameState.pendingApprovals||[]).filter(a=>a.id!==appr.id)});
-    showToast({type:'warn',icon:'close',title:'却下しました',sub:''});
-  },[gameState,showToast,save]);
-
   const handleFireEvent=useCallback(async(evId,action='start')=>{
-    const events=(gameState.events||[]).map(ev=>{if(ev.id!==evId)return ev;return action==='end'?{...ev,status:'done'}:{...ev,status:'active',triggeredAt:Date.now()};});
-    if(action==='start'){const ev=(gameState.events||[]).find(e=>e.id===evId);if(ev)showToast({type:'ev',icon:'flash',title:'イベント発動！',sub:ev.name});}
     const target=(gameState.events||[]).find(e=>e.id===evId);
-    const teams=(gameState.teams||[]).map(team=>({...team,logs:[...(team.logs||[]),target?{type:'ev',title:action==='end'?'イベント終了':'イベント発動',sub:target.name,time:nowTime()}:null].filter(Boolean)}));
+    if(!target)return;
+    const events=(gameState.events||[]).map(ev=>ev.id!==evId?ev:(action==='end'?{...ev,status:'done'}:{...ev,status:'active',triggeredAt:Date.now()}));
+    if(action==='start')showToast({type:'ev',icon:'flash',title:'イベント発動！',sub:target.name});
+    const logEntry={type:'ev',title:action==='end'?'イベント終了':'イベント発動',sub:target.name};
+    const teams=(gameState.teams||[]).map(team=>appendTeamLog(team,logEntry));
     await save({...gameState,events,teams});
   },[gameState,showToast,save]);
 
   const handleAddEvent=useCallback(async(ev)=>{await save({...gameState,events:[...(gameState.events||[]),ev]});},[gameState,save]);
   const handleApproveParticipant=useCallback(async(participantId)=>{
-    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===participantId?{...p,status:'joined'}:p),auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'participant',time:nowTime(),message:'参加申請を承認'}]}));
+    await updateGame(gs=>appendAuditLog({...gs,participants:(gs.participants||[]).map(p=>p.id===participantId?{...p,status:'joined'}:p)},'participant','参加申請を承認'));
   },[updateGame]);
   const handleRejectParticipant=useCallback(async(participantId)=>{
-    await updateGame(gs=>({...gs,participants:(gs.participants||[]).filter(p=>p.id!==participantId),auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'participant',time:nowTime(),message:'参加申請を拒否'}]}));
+    await updateGame(gs=>appendAuditLog({...gs,participants:(gs.participants||[]).filter(p=>p.id!==participantId)},'participant','参加申請を拒否'));
   },[updateGame]);
   const handleAssignParticipant=useCallback(async(participantId,teamId)=>{
     if(!gameState||!canEditTeams(gameState))return;
-    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===participantId?{...p,teamId,status:teamId?'assigned':'joined'}:p),auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'participant',time:nowTime(),message:'チーム編成を更新'}]}));
+    await updateGame(gs=>appendAuditLog({...gs,participants:(gs.participants||[]).map(p=>p.id===participantId?{...p,teamId,status:teamId?'assigned':'joined'}:p)},'participant','チーム編成を更新'));
   },[gameState,updateGame]);
   const handleRenameTeam=useCallback(async(teamId,name)=>{
-    await updateGame(gs=>({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?{...t,name:name||t.name,logs:[...(t.logs||[]),{type:'st',title:'チーム名変更',sub:name||t.name,time:nowTime()}]}:t)}));
+    await updateGame(gs=>({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?appendTeamLog({...t,name:name||t.name},{type:'st',title:'チーム名変更',sub:name||t.name}):t)}));
   },[updateGame]);
   const handleSetTeamColor=useCallback(async(teamId,color)=>{
-    await updateGame(gs=>({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?{...t,color,logs:[...(t.logs||[]),{type:'st',title:'チームカラー変更',sub:color,time:nowTime()}]}:t)}));
+    await updateGame(gs=>({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?appendTeamLog({...t,color},{type:'st',title:'チームカラー変更',sub:color}):t)}));
   },[updateGame]);
   const handleChangeGameState=useCallback(async(nextState)=>{
     await updateGame(gs=>{
       if(nextState==='in_progress'&&!canStartGame(gs))return gs;
       const startedAt=nextState==='in_progress'&&!gs.startedAt?Date.now():gs.startedAt;
-      return{...gs,state:nextState,startedAt,finishedAt:nextState==='finished'?isoNow():gs.finishedAt,auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'state',time:nowTime(),message:`大会状態を ${nextState} に変更`} ]};
+      return appendAuditLog({...gs,state:nextState,startedAt,finishedAt:nextState==='finished'?isoNow():gs.finishedAt},'state',`大会状態を ${nextState} に変更`);
     });
     if(nextState==='in_progress')setTab('bingo');
   },[updateGame]);
@@ -2008,19 +1945,20 @@ function App(){
     });
   },[updateGame]);
   const handleAdjustScore=useCallback(async(teamId,delta)=>{
-    await updateGame(gs=>({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?{...t,manualScoreDelta:(t.manualScoreDelta||0)+delta,logs:[...(t.logs||[]),{type:'st',title:'スコア手動修正',sub:`${delta>0?'+':''}${delta}pt`,time:nowTime()}]}:t),auditLogs:[...(gs.auditLogs||[]),{id:`audit_${Date.now()}`,type:'score',time:nowTime(),message:`スコア手動修正 ${delta>0?'+':''}${delta}pt`}]}));
+    const sign=delta>0?'+':'';
+    await updateGame(gs=>appendAuditLog({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?appendTeamLog({...t,manualScoreDelta:(t.manualScoreDelta||0)+delta},{type:'st',title:'スコア手動修正',sub:`${sign}${delta}pt`}):t)},'score',`スコア手動修正 ${sign}${delta}pt`));
   },[updateGame]);
   const handleRenameSelf=useCallback(async(name)=>{
     if(!currentParticipant||!name.trim())return;
     const trimmed=name.trim();
     const dup=(gameState?.participants||[]).find(p=>p.active!==false&&p.id!==currentParticipant.id&&p.name===trimmed);
     if(dup){showToast({type:'warn',icon:'alert',title:'同じ名前は使えません',sub:''});return;}
-    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===currentParticipant.id?{...p,name:trimmed,nameHistory:[...(p.nameHistory||[]),{name:trimmed,changedAt:isoNow()}]}:p),teams:(gs.teams||[]).map(t=>t.id===currentParticipant.teamId?{...t,logs:[...(t.logs||[]),{type:'st',title:'プレイヤー名変更',sub:`${currentParticipant.name} → ${trimmed}`,time:nowTime()}]}:t)}));
+    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===currentParticipant.id?{...p,name:trimmed,nameHistory:[...(p.nameHistory||[]),{name:trimmed,changedAt:isoNow()}]}:p),teams:(gs.teams||[]).map(t=>t.id===currentParticipant.teamId?appendTeamLog(t,{type:'st',title:'プレイヤー名変更',sub:`${currentParticipant.name} → ${trimmed}`}):t)}));
     showToast({type:'ok',icon:'note',title:'名前を変更しました',sub:trimmed});
   },[currentParticipant,gameState,showToast,updateGame]);
   const handleLeaveGame=useCallback(async()=>{
     if(!currentParticipant)return;
-    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===currentParticipant.id?{...p,teamId:null,status:'joined',active:false}:p),teams:(gs.teams||[]).map(t=>t.id===currentParticipant.teamId?{...t,logs:[...(t.logs||[]),{type:'st',title:'プレイヤー離脱',sub:currentParticipant.name,time:nowTime()}]}:t)}));
+    await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===currentParticipant.id?{...p,teamId:null,status:'joined',active:false}:p),teams:(gs.teams||[]).map(t=>t.id===currentParticipant.teamId?appendTeamLog(t,{type:'st',title:'プレイヤー離脱',sub:currentParticipant.name}):t)}));
     exitGameSession({setGameState,setMyParticipantId,setIsAdmin,setScreen,setTab,setShowShare});
   },[currentParticipant,updateGame]);
   const handleExitToStart=useCallback(()=>{
@@ -2029,20 +1967,20 @@ function App(){
 
   // Timer
   const cfg=gameState?.config;
-  const gameDur=gameState?.startAt&&gameState?.endAt?Math.max(1,new Date(gameState.endAt)-new Date(gameState.startAt)):(cfg?.gameDuration||8*60*60*1000);
+  const gameDur=gameState?.startAt&&gameState?.endAt?Math.max(1,new Date(gameState.endAt)-new Date(gameState.startAt)):(cfg?.gameDuration||DEFAULT_GAME_DURATION_MS);
   const remaining=gameState?.endAt?Math.max(0,new Date(gameState.endAt)-nowTs):0;
   const rH=Math.floor(remaining/3600000);
   const rM=Math.floor((remaining%3600000)/60000);
   const rS=Math.floor((remaining%60000)/1000);
   const timerStr=`${rH}:${String(rM).padStart(2,'0')}:${String(rS).padStart(2,'0')}`;
-  const isEnding=remaining<30*60*1000;
+  const isEnding=remaining<ENDING_THRESHOLD_MS;
   const score=myTeam?calcScore(myTeam,cfg):{total:0,stB:0,msB:0,masks:0};
   const activeEvents=(gameState?.events||[]).filter(e=>e.status==='active');
   const participantCounts=getParticipantCounts(gameState);
-  const pCount=(gameState?.pendingApprovals||[]).length+participantCounts.pending.length;
+  const pCount=participantCounts.pending.length;
   const mode=cfg?.mode||'basic';
   const progressRatio=gameDur?remaining/gameDur:1;
-  const canViewOpponents=(gameState?.state==='finished')||progressRatio>=0.25;
+  const canViewOpponents=(gameState?.state==='finished')||progressRatio>=OPPONENT_VIEW_RATIO;
   const showOpponentDetails=gameState?.state==='finished'||isAdmin;
   const canOpenPlayTabs=(myTeam&&gameState?.state==='in_progress'&&currentParticipant?.status==='assigned');
   let playerTabs;
@@ -2197,7 +2135,7 @@ function App(){
           <div className="lb"><div className="lt">{item.name}</div><div className="ls">{item.changedAt}</div></div>
         </div>)}
       </div>}
-      {tab==='admin'&&gameState&&<AdminPage gameState={gameState} onFireEvent={handleFireEvent} onAddEvent={handleAddEvent} onApprove={handleApprove} onReject={handleReject} onApproveParticipant={handleApproveParticipant} onRejectParticipant={handleRejectParticipant} onAssignParticipant={handleAssignParticipant} onRenameTeam={handleRenameTeam} onSetTeamColor={handleSetTeamColor} onChangeGameState={handleChangeGameState} onAutoAssign={handleAutoAssign} onUpdateConfig={handleUpdateConfig} onAdjustScore={handleAdjustScore}/>}
+      {tab==='admin'&&gameState&&<AdminPage gameState={gameState} onFireEvent={handleFireEvent} onAddEvent={handleAddEvent} onApproveParticipant={handleApproveParticipant} onRejectParticipant={handleRejectParticipant} onAssignParticipant={handleAssignParticipant} onRenameTeam={handleRenameTeam} onSetTeamColor={handleSetTeamColor} onChangeGameState={handleChangeGameState} onAutoAssign={handleAutoAssign} onUpdateConfig={handleUpdateConfig} onAdjustScore={handleAdjustScore}/>}
       {isAdmin&&<div style={{marginTop:18}}>
         <button className="btn sec" onClick={handleExitToStart}>トップに戻る</button>
         {gameState?.state==='finished'&&<button className="btn pri" onClick={handleExitToStart}>新しい大会を作る</button>}
