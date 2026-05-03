@@ -2,8 +2,25 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>東京メトロラン</title>
+<meta name="description" content="東京メトロ駅を巡るリアル移動型ビンゴゲーム">
+<meta name="theme-color" content="#1f2f56">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Metro Run">
+<meta name="mobile-web-app-capable" content="yes">
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js').catch(e=>console.error('SW reg failed',e));
+  });
+}
+</script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -20,8 +37,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-
   --bg:#f7f8f5;--surface:#ffffff;--surface-sub:#f1f4f6;--surface-alt:#edf2f5;
   --border:#d7dde2;--border-strong:#b8c5ce;--text:#141413;--muted:#687681;--gold:#c4b000
 }
-.wrap{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);border-right:1px solid var(--border)}
-.hdr{background:var(--surface);border-bottom:1px solid var(--border-strong);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.wrap{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);border-right:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0)}
+.hdr{background:var(--surface);border-bottom:1px solid var(--border-strong);padding:calc(12px + env(safe-area-inset-top,0)) 14px 12px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .logo{font-family:'Barlow Condensed',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--accent);line-height:1}
 .timer{font-family:'Barlow Condensed',sans-serif;font-size:28px;color:var(--navy);line-height:1;text-align:right}
 .timer.end{color:var(--red);animation:pulse 1s infinite}
