@@ -1992,8 +1992,8 @@ function App(){
       const startedAt=nextState==='in_progress'&&!gs.startedAt?Date.now():gs.startedAt;
       return appendAuditLog({...gs,state:nextState,startedAt,finishedAt:nextState==='finished'?isoNow():gs.finishedAt},'state',`大会状態を ${nextState} に変更`);
     });
-    if(nextState==='in_progress')setTab('bingo');
-  },[updateGame]);
+    if(nextState==='in_progress'&&!isAdmin)setTab('bingo');
+  },[updateGame,isAdmin]);
   const handleAutoAssign=useCallback(async()=>{if(!gameState||!canEditTeams(gameState))return;await updateGame(gs=>autoAssignParticipants(gs));},[gameState,updateGame]);
   const handleUpdateConfig=useCallback(async(partial)=>{
     await updateGame(gs=>{
