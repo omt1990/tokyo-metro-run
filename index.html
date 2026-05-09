@@ -1992,8 +1992,8 @@ function App(){
       const startedAt=nextState==='in_progress'&&!gs.startedAt?Date.now():gs.startedAt;
       return appendAuditLog({...gs,state:nextState,startedAt,finishedAt:nextState==='finished'?isoNow():gs.finishedAt},'state',`大会状態を ${nextState} に変更`);
     });
-    if(nextState==='in_progress')setTab('bingo');
-  },[updateGame]);
+    if(nextState==='in_progress'&&!isAdmin)setTab('bingo');
+  },[updateGame,isAdmin]);
   const handleAutoAssign=useCallback(async()=>{if(!gameState||!canEditTeams(gameState))return;await updateGame(gs=>autoAssignParticipants(gs));},[gameState,updateGame]);
   const handleUpdateConfig=useCallback(async(partial)=>{
     await updateGame(gs=>{
@@ -2061,6 +2061,13 @@ function App(){
     if(isAdmin)return;
     if(!playerTabs.find(item=>item.id===tab))setTab('home');
   },[isAdmin,playerTabs,tab]);
+  const prevGameStateRef=useRef(null);
+  useEffect(()=>{
+    const prev=prevGameStateRef.current;
+    prevGameStateRef.current=gameState?.state;
+    if(isAdmin)return;
+    if(prev&&prev!=='in_progress'&&gameState?.state==='in_progress'&&canOpenPlayTabs&&tab==='home')setTab('bingo');
+  },[gameState?.state,isAdmin,canOpenPlayTabs,tab]);
 
   // 同意ゲート
   if(!consent)return<ConsentModal onAccept={()=>setConsent(true)}/>;
