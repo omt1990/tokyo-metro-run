@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>東京メトロラン</title>
 <meta name="description" content="東京メトロ駅を巡るリアル移動型ビンゴゲーム">
 <meta name="theme-color" content="#1f2f56">
@@ -21,9 +21,9 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -42,6 +42,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-
 .logo{font-family:'Barlow Condensed',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--accent);line-height:1}
 .timer{font-family:'Barlow Condensed',sans-serif;font-size:28px;color:var(--navy);line-height:1;text-align:right}
 .timer.end{color:var(--red);animation:pulse 1s infinite}
+.hdr span,.hdr button{white-space:nowrap}
+@media(max-width:400px){.logo{font-size:22px}.timer{font-size:24px}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 .sbar{background:var(--surface-sub);padding:10px 14px;display:flex;gap:8px;border-bottom:1px solid var(--border)}
 .si{flex:1;background:var(--surface);border-radius:16px;padding:9px 8px;text-align:center;border:1px solid var(--border)}
@@ -71,11 +73,11 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f7f8f5;color:#141413;min-
 .bcell.bline.mb{background:#f4effb;border-color:var(--purple)}
 .bcell.corner{border-color:var(--border)}
 .bcell-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:100%;height:100%;padding-top:2px}
-.bln{font-size:7px;color:var(--muted);line-height:1;text-align:center;width:100%;min-height:18px;display:flex;align-items:flex-end;justify-content:center}
+.bln{font-size:8px;color:var(--muted);line-height:1;text-align:center;width:100%;min-height:18px;display:flex;align-items:flex-end;justify-content:center}
 .bcell.hit .bln{color:var(--green)}
-.bnm{font-size:6.1px;font-weight:700;color:var(--text);line-height:1.08;text-align:center;word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:14px;padding:0 1px;letter-spacing:-.02em}
+.bnm{font-size:8.5px;font-weight:700;color:var(--text);line-height:1.08;text-align:center;word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:14px;padding:0 1px;letter-spacing:-.02em}
 .bcell.hit .bnm{color:#146533}
-.bcell.free .bnm{color:var(--accent);font-size:7px;min-height:auto}
+.bcell.free .bnm{color:var(--accent);font-size:9px;min-height:auto}
 .bcell.bline .bnm{color:var(--cyan)}
 .bcell.bline.mb .bnm{color:var(--purple)}
 .bcell.pend .bnm{color:var(--orange)}
@@ -734,7 +736,10 @@ function calcScore(team,config){
   const total=mode==='double'?(stPoints*msPoints)+gp:stPoints+gp;
   return{stB:stBingo.length,msB:msBingo.length,masks:stMasks+msMasks,stMasks,msMasks,stPoints,msPoints,total};
 }
-function genCode(){return Math.random().toString(36).substr(2,6).toUpperCase()}
+const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function genCode(){let s='';for(let i=0;i<6;i++)s+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];return s}
+const STATE_LABELS={recruiting:'募集中',team_building:'編成中',in_progress:'進行中',finished:'終了'};
+const URL_CODE=(typeof window!=='undefined'&&(new URLSearchParams(window.location.search).get('code')||'').toUpperCase().slice(0,6))||'';
 function nowTime(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
 function isoNow(){return new Date().toISOString()}
 
@@ -1153,7 +1158,7 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
         return<div key={i} className={`bcell ${hit&&!cell.isFree?'hit':''} ${cell.isFree?'free':''} ${pend?'pend':''} ${bl?'bline mb':''}`}>
           <div className="bcell-inner">
             {!cell.isFree&&<div className="bln"><MissionIcon name={cell.icon} size={15}/></div>}
-            <div className="bnm" style={{fontSize:7}}>{cell.isFree?'FREE':(cell.text||'').slice(0,10)+'…'}</div>
+            <div className="bnm">{cell.isFree?'FREE':(cell.text||'').slice(0,12)+'…'}</div>
           </div>
         </div>;
       })}
@@ -1161,7 +1166,7 @@ function BingoPage({gameState,myTeamId,config,canViewOpponents,showOpponentDetai
 
     <div style={{marginTop:12}}>
       <div className="score-detail">
-        {isMyTeam||showOpponentDetails?<><div className="score-row"><span className="lbl">マス数</span><span className="val">{viewScore.masks}pt</span></div>
+        {isMyTeam||showOpponentDetails?<><div className="score-row"><span className="lbl">マス数</span><span className="val">{viewScore.masks}</span></div>
         {mode==='double'
           ?<>
             <div className="score-row"><span className="lbl">駅ポイント</span><span className="val">{viewScore.stPoints}pt</span></div>
@@ -1326,10 +1331,27 @@ function ScorePage({gameState,myTeamId,isFinished}){
       ))}</div>
     </div>
   );
-  if(isFinished)return<div>
-    <p className="sec">終了後リザルト</p>
-    {teams.map(renderBoard)}
-  </div>;
+  if(isFinished){
+    const ranked=[...teams].sort((a,b)=>b.total-a.total);
+    let rank=0,prevTotal=null;
+    const rows=ranked.map((t,i)=>{if(t.total!==prevTotal){rank=i+1;prevTotal=t.total;}return{...t,rank};});
+    const top=rows.filter(r=>r.rank===1);
+    return<div>
+      <p className="sec">結果</p>
+      <div className="rank">
+        <div className="rh">{top.length>1?`同点 1位：${top.map(t=>t.name).join('・')}`:`優勝：${top[0]?.name||'-'}`}</div>
+        {rows.map(r=>(
+          <div key={r.id} className={`rrow ${r.id===myTeamId?'me':''}`}>
+            <div className={`rn ${r.rank===1?'g':r.rank===2?'s':r.rank===3?'b':''}`}>{r.rank}</div>
+            <div className="rt"><div className="rtn"><div className="dot" style={{background:r.color}}></div>{r.name}</div>
+              <div className="rtd">{mode==='double'?`駅 ${r.stPoints} × ミッション ${r.msPoints}`:`駅ビンゴ ${r.stB}列`}</div></div>
+            <div className="rs">{r.total}<span style={{fontSize:14}}>pt</span></div>
+          </div>
+        ))}
+      </div>
+      {rows.map(renderBoard)}
+    </div>;
+  }
   if(!myTeam)return<div className="empty">チームに割り当てられるとスコアが表示されます</div>;
   return<div>
     <p className="sec">得点内訳</p>
@@ -1363,7 +1385,7 @@ function AdminPage({gameState,onFireEvent,onAddEvent,onApproveParticipant,onReje
   const config=gameState.config;
   const participantCounts=getParticipantCounts(gameState);
   const startBlockers=getStartBlockers(gameState);
-  const stateLabels={recruiting:'募集中',team_building:'編成中',in_progress:'進行中',finished:'終了'};
+  const stateLabels=STATE_LABELS;
   return<div>
     <div style={{background:'rgba(230,0,18,.1)',border:'1px solid var(--red)',borderRadius:8,padding:'8px 12px',marginBottom:10,fontSize:11,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
       <span style={{fontWeight:700,color:'var(--red)'}} className="icon-chip"><Icon name="lock" size={14}/>運営モード</span>
@@ -1522,7 +1544,7 @@ function OrganizerSetup({onCreateGame,onBack}){
   const [startStationId,setStartStationId]=useState('otemachi');
   const [playerLimit,setPlayerLimit]=useState(8);
   const [teamCount,setTeamCount]=useState(2);
-  const [goalEnabled,setGoalEnabled]=useState(false);
+  const goalEnabled=false;
   const [missions,setMissions]=useState(DEFAULT_MISSIONS.map(m=>({...m,enabled:true})));
   const [events,setEvents]=useState([]);
   const [goalStation,setGoalStation]=useState('');
@@ -1606,13 +1628,6 @@ function OrganizerSetup({onCreateGame,onBack}){
             <button className="num-btn" onClick={()=>setTeamCount(n=>n+1)}>+</button>
           </div>
         </div>
-        <div className="custom-row">
-          <span className="custom-label">ゴールペナルティ</span>
-          <div className="toggle-row">
-            <div className={`toggle ${goalEnabled?'on':''}`} onClick={()=>setGoalEnabled(v=>!v)}></div>
-            <span style={{fontSize:11,color:goalEnabled?'var(--green)':'var(--muted)'}}>{goalEnabled?'ON（-5pt）':'OFF'}</span>
-          </div>
-        </div>
       </div>
       {gameMode==='double'&&<div style={{marginBottom:10}}>
         <p className="sec" style={{marginTop:0}}>ミッション選択</p>
@@ -1630,7 +1645,7 @@ function OrganizerSetup({onCreateGame,onBack}){
           ))}
         </div>
       </div>}
-      <p className="sec">将来拡張用の任意項目</p>
+      <p className="sec">任意の設定</p>
       <input className="sinp sm" placeholder="ゴール駅" value={goalStation} onChange={e=>setGoalStation(e.target.value)}/>
       <input className="sinp sm" placeholder="ゴール条件" value={goalCondition} onChange={e=>setGoalCondition(e.target.value)}/>
       <input className="sinp sm" placeholder="合流地点" value={meetupPoint} onChange={e=>setMeetupPoint(e.target.value)}/>
@@ -1693,7 +1708,7 @@ function ConsentModal({onAccept}){
 
 // ── PLAYER JOIN ──
 function PlayerJoin({onJoin,onBack}){
-  const [code,setCode]=useState('');
+  const [code,setCode]=useState(URL_CODE);
   const [playerName,setPlayerName]=useState('');
   const [err,setErr]=useState('');
   const [loading,setLoading]=useState(false);
@@ -1737,7 +1752,10 @@ function AdminJoin({onJoin,onBack}){
 // ── SHARE MODAL ──
 function ShareModal({gameCode,config,onClose}){
   const [copied,setCopied]=useState(false);
+  const [linkCopied,setLinkCopied]=useState(false);
+  const joinUrl=`${window.location.origin}${window.location.pathname}?code=${gameCode}`;
   const copy=()=>{if(navigator.clipboard)navigator.clipboard.writeText(gameCode).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
+  const copyLink=()=>{if(navigator.clipboard)navigator.clipboard.writeText(joinUrl).then(()=>{setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2000)})};
   return<div className="center-overlay" onClick={onClose}>
     <div className="modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-title">参加者を招待する</div>
@@ -1751,7 +1769,8 @@ function ShareModal({gameCode,config,onClose}){
         </div>
       </div>
       <div style={{fontSize:11,color:'var(--yellow)',textAlign:'center',marginBottom:10}}><span className="icon-chip"><Icon name="flash" size={13}/>別端末からリアルタイム同期</span></div>
-      <button className="btn pri" onClick={copy}>{copied?<span className="icon-chip"><Icon name="check" size={15}/>コピーしました</span>:<span className="icon-chip"><Icon name="copy" size={15}/>コードをコピー</span>}</button>
+      <button className="btn pri" onClick={copyLink}>{linkCopied?<span className="icon-chip"><Icon name="check" size={15}/>コピーしました</span>:<span className="icon-chip"><Icon name="share" size={15}/>参加リンクをコピー</span>}</button>
+      <button className="btn sec" onClick={copy}>{copied?<span className="icon-chip"><Icon name="check" size={15}/>コピーしました</span>:<span className="icon-chip"><Icon name="copy" size={15}/>コードだけコピー</span>}</button>
       <button className="btn sec" onClick={onClose}>閉じる</button>
     </div>
   </div>;
@@ -1866,7 +1885,7 @@ function App(){
     let mounted=true;
     (async()=>{
       const session=loadSession();
-      if(!session?.code){if(mounted)setSessionReady(true);return;}
+      if(!session?.code){if(mounted){if(URL_CODE)setScreen('player');setSessionReady(true);}return;}
       const gsRaw=await fbLoad(session.code);
       const gs=gsRaw?hydrateTeamMembers(gsRaw):null;
       if(!mounted){return;}
@@ -2018,10 +2037,13 @@ function App(){
     await updateGame(gs=>({...gs,teams:(gs.teams||[]).map(t=>t.id===teamId?appendTeamLog({...t,color},{type:'st',title:'チームカラー変更',sub:color}):t)}));
   },[updateGame]);
   const handleChangeGameState=useCallback(async(nextState)=>{
+    const cur=gameStateRef.current;
+    if(nextState==='finished'&&cur?.state!=='finished'&&!window.confirm('大会を終了しますか？\n終了すると到着やミッションを記録できなくなります。'))return;
+    if(cur?.state==='in_progress'&&['recruiting','team_building'].includes(nextState)&&!window.confirm('進行中の大会を「'+STATE_LABELS[nextState]+'」に戻しますか？\nプレイヤーは記録できなくなります。'))return;
     await updateGame(gs=>{
       if(nextState==='in_progress'&&!canStartGame(gs))return gs;
       const startedAt=nextState==='in_progress'&&!gs.startedAt?Date.now():gs.startedAt;
-      return appendAuditLog({...gs,state:nextState,startedAt,finishedAt:nextState==='finished'?isoNow():gs.finishedAt},'state',`大会状態を ${nextState} に変更`);
+      return appendAuditLog({...gs,state:nextState,startedAt,finishedAt:nextState==='finished'?isoNow():gs.finishedAt},'state',`大会状態を「${STATE_LABELS[nextState]||nextState}」に変更`);
     });
     if(nextState==='in_progress'&&!isAdmin)setTab('bingo');
   },[updateGame,isAdmin]);
@@ -2047,6 +2069,7 @@ function App(){
   },[currentParticipant,gameState,showToast,updateGame]);
   const handleLeaveGame=useCallback(async()=>{
     if(!currentParticipant)return;
+    if(!window.confirm('大会から離脱しますか？\n進行中の大会には、あとから参加し直せません。'))return;
     await updateGame(gs=>({...gs,participants:(gs.participants||[]).map(p=>p.id===currentParticipant.id?{...p,teamId:null,status:'joined',active:false}:p),teams:(gs.teams||[]).map(t=>t.id===currentParticipant.teamId?appendTeamLog(t,{type:'st',title:'プレイヤー離脱',sub:currentParticipant.name}):t)}));
     exitGameSession({setGameState,setMyParticipantId,setIsAdmin,setScreen,setTab,setShowShare});
   },[currentParticipant,updateGame]);
@@ -2173,7 +2196,7 @@ function App(){
       <div className="si"><div className="sl">SCORE</div><div className="sv">{score.total}</div></div>
       {mode==='double'
         ?<><div className="si"><div className="sl">駅BINGO</div><div className="sv b">{score.stB}</div></div>
-           <div className="si"><div className="sl">ミッション</div><div className="sv p">{score.msB}</div></div></>
+           <div className="si"><div className="sl">ミッションBINGO</div><div className="sv p">{score.msB}</div></div></>
         :<><div className="si"><div className="sl">BINGO</div><div className="sv b">{score.stB}</div></div>
            <div className="si"><div className="sl">マス</div><div className="sv g">{score.masks}</div></div></>}
     </div>}
