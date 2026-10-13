@@ -249,6 +249,17 @@ function saveSession(session){try{localStorage.setItem('metro_run_session',JSON.
 function loadSession(){try{return JSON.parse(localStorage.getItem('metro_run_session')||'null')}catch(e){return null}}
 function clearSession(){try{localStorage.removeItem('metro_run_session')}catch(e){}}
 async function fbSave(code,s){await _authReady;await _db.ref(`games_v6/${code}`).set(s)}
+// 全体を set で上書きすると、同時に操作した別端末の記録が消える。
+// transaction はサーバーの最新状態に updater を当てて書くので、同時操作でも互いの変更が残る。
+// updater は「変える必要がなければ受け取った値をそのまま返す」こと（二重適用を防ぐ）。
+async function fbUpdate(code,updater){
+  await _authReady;
+  const res=await _db.ref(`games_v6/${code}`).transaction(cur=>cur?updater(cur):cur);
+  return res.snapshot&&res.snapshot.exists()?res.snapshot.val():null;
+}
+// datetime-local 形式（YYYY-MM-DDTHH:MM）。toISOString() は UTC を返し、
+// それをローカル時刻として読み直すと9時間ずれるため、ローカル時刻で自前整形する。
+function toLocalInput(d){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;}
 async function fbLoad(code){await _authReady;const snap=await _db.ref(`games_v6/${code}`).get();if(!snap.exists())return null;return snap.val()}
 function fbSub(code,cb){let ref=null;let active=true;_authReady.then(()=>{if(!active)return;ref=_db.ref(`games_v6/${code}`);ref.on('value',snap=>{if(snap.exists())cb(snap.val())})});return()=>{active=false;if(ref)ref.off('value')}}
 
@@ -993,9 +1004,8 @@ function buildDemoGameState(){
   const startedAt=Date.now();
   // datetime-local 形式（YYYY-MM-DDTHH:MM）。toISOString() は UTC を返してしまい、
   // 後で new Date() がローカル時刻として解釈すると TZ ずれで即時終了判定に入るため自前でフォーマットする。
-  const fmt=d=>{const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;};
-  const startAt=fmt(new Date(startedAt));
-  const endAt=fmt(new Date(startedAt+DEFAULT_GAME_DURATION_MS));
+  const startAt=toLocalInput(new Date(startedAt));
+  const endAt=toLocalInput(new Date(startedAt+DEFAULT_GAME_DURATION_MS));
   const base={
     gameCode:'DEMO00',version:'v7',title:'デモ大会（テストプレイ）',
     state:'in_progress',startAt,endAt,startedAt,finishedAt:null,
@@ -1507,8 +1517,8 @@ function OrganizerSetup({onCreateGame,onBack}){
   const [gameMode,setGameMode]=useState('double');
   const [routeMode,setRouteMode]=useState('metro');
   const [title,setTitle]=useState('');
-  const [startAt,setStartAt]=useState(now.toISOString().slice(0,16));
-  const [endAt,setEndAt]=useState(plusHours.toISOString().slice(0,16));
+  const [startAt,setStartAt]=useState(toLocalInput(now));
+  const [endAt,setEndAt]=useState(toLocalInput(plusHours));
   const [startStationId,setStartStationId]=useState('otemachi');
   const [playerLimit,setPlayerLimit]=useState(8);
   const [teamCount,setTeamCount]=useState(2);
@@ -1794,31 +1804,40 @@ function App(){
     setSessionReady(true);
   },[]);
 
+  const gameStateRef=useRef(null);
+  gameStateRef.current=gameState;
+  const tickBusyRef=useRef(false);
   useEffect(()=>{
-    const iv=setInterval(()=>{
-      setNowTs(Date.now());
-      setGameState(prev=>{
-        if(!prev)return prev;
-        let changed=false;
-        let next={...prev};
-        const t=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
-        const events=(next.events||[]).map(ev=>{
-          if(ev.type==='time'&&ev.status==='pending'&&ev.scheduledTime===t){changed=true;return{...ev,status:'active',triggeredAt:Date.now()}}
-          return ev;
-        });
-        if(changed){
-          const activated=events.filter(ev=>ev.type==='time'&&ev.status==='active'&&!(next.events||[]).find(prevEv=>prevEv.id===ev.id&&prevEv.status==='active'));
-          next={...next,events,teams:(next.teams||[]).map(team=>({...team,logs:[...(team.logs||[]),...activated.map(ev=>({type:'ev',title:'イベント自動発動',sub:ev.name,time:nowTime()}))]}))};
-        }
-        if(next.state==='in_progress'&&next.endAt&&Date.now()>=new Date(next.endAt).getTime()){
-          changed=true;
-          next=appendAuditLog({...next,state:'finished',finishedAt:isoNow()},'system','大会を自動終了');
-        }
-        if(!changed)return prev;
-        const gs=hydrateTeamMembers(next);
-        if(!IS_DEMO)fbSave(gs.gameCode,gs);
-        return gs;
+    // 時刻イベントの発動と自動終了。updater は受け取った状態だけで判断するので、
+    // 複数端末が同時に走っても2台目以降は「変更なし」になり、ログが二重に付かない。
+    const applyTick=(prev)=>{
+      let changed=false;
+      let next={...prev};
+      const t=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+      const events=(next.events||[]).map(ev=>{
+        if(ev.type==='time'&&ev.status==='pending'&&ev.scheduledTime===t){changed=true;return{...ev,status:'active',triggeredAt:Date.now()}}
+        return ev;
       });
+      if(changed){
+        const activated=events.filter(ev=>ev.type==='time'&&ev.status==='active'&&!(next.events||[]).find(prevEv=>prevEv.id===ev.id&&prevEv.status==='active'));
+        next={...next,events,teams:(next.teams||[]).map(team=>({...team,logs:[...(team.logs||[]),...activated.map(ev=>({type:'ev',title:'イベント自動発動',sub:ev.name,time:nowTime()}))]}))};
+      }
+      if(next.state==='in_progress'&&next.endAt&&Date.now()>=new Date(next.endAt).getTime()){
+        changed=true;
+        next=appendAuditLog({...next,state:'finished',finishedAt:isoNow()},'system','大会を自動終了');
+      }
+      return changed?hydrateTeamMembers(next):prev;
+    };
+    const iv=setInterval(async()=>{
+      setNowTs(Date.now());
+      const prev=gameStateRef.current;
+      if(!prev||tickBusyRef.current)return;
+      if(applyTick(prev)===prev)return;
+      if(IS_DEMO){setGameState(applyTick(prev));return;}
+      tickBusyRef.current=true;
+      try{const gs=await fbUpdate(prev.gameCode,applyTick);if(gs)setGameState(hydrateTeamMembers(gs));}
+      catch(e){console.error('tick save failed',e)}
+      finally{tickBusyRef.current=false}
     },TICK_INTERVAL_MS);
     return()=>clearInterval(iv);
   },[]);
@@ -1880,31 +1899,35 @@ function App(){
     const gs=gsRaw?hydrateTeamMembers(gsRaw):null;
     if(!gs)return false;
     if(asAdmin){setGameState(gs);setIsAdmin(true);setTab('admin');setScreen('game');saveSession({code,isAdmin:true});subGame(code);return true;}
-    if(!canJoinGame(gs))return '現在は新規参加を受け付けていません';
-    const dup=(gs.participants||[]).find(p=>p.active!==false&&p.name===playerName);
-    if(dup)return '同じ名前の参加者がすでにいます';
-    const activeJoined=(gs.participants||[]).filter(p=>p.active!==false&&p.status!=='pending').length;
-    const status=activeJoined>=(gs.config?.playerLimit||0)?'pending':'joined';
-    const participant=createParticipant(playerName,status);
-    const updated=hydrateTeamMembers(appendAuditLog({...gs,participants:[...(gs.participants||[]),participant]},'participant',`${playerName} が ${status==='pending'?'承認待ち':'参加'} で登録`));
-    await fbSave(code,updated);
+    // 参加の判定と追加はサーバーの最新状態に対して行う（同時参加で他の人が消えないように）
+    const participant=createParticipant(playerName,'joined');
+    let joinError='';
+    const updatedRaw=await fbUpdate(code,cur=>{
+      joinError='';
+      if(!canJoinGame(cur)){joinError='現在は新規参加を受け付けていません';return cur;}
+      if((cur.participants||[]).find(p=>p.active!==false&&p.name===playerName)){joinError='同じ名前の参加者がすでにいます';return cur;}
+      const activeJoined=(cur.participants||[]).filter(p=>p.active!==false&&p.status!=='pending').length;
+      participant.status=activeJoined>=(cur.config?.playerLimit||0)?'pending':'joined';
+      return hydrateTeamMembers(appendAuditLog({...cur,participants:[...(cur.participants||[]),participant]},'participant',`${playerName} が ${participant.status==='pending'?'承認待ち':'参加'} で登録`));
+    });
+    if(joinError)return joinError;
+    if(!updatedRaw)return false;
+    const updated=hydrateTeamMembers(updatedRaw);
     setGameState(updated);setMyParticipantId(participant.id);setScreen('game');setIsAdmin(false);setTab('home');
     saveSession({code,participantId:participant.id,isAdmin:false});
     subGame(code);
     return true;
   },[subGame]);
 
-  const save=useCallback(async(newGs)=>{
-    const hydrated=hydrateTeamMembers(newGs);
-    if(!IS_DEMO)await fbSave(hydrated.gameCode,hydrated);
-    setGameState(hydrated);
-  },[]);
-
+  // すべての状態変更はここを通す。updater はサーバーの最新状態を受け取って新しい状態を返す。
   const updateGame=useCallback(async(updater)=>{
-    if(!gameState)return;
-    const next=typeof updater==='function'?updater(gameState):updater;
-    await save(next);
-  },[gameState,save]);
+    const cur=gameStateRef.current;
+    if(!cur)return;
+    const fn=typeof updater==='function'?updater:()=>updater;
+    if(IS_DEMO){setGameState(hydrateTeamMembers(fn(cur)));return;}
+    const gs=await fbUpdate(cur.gameCode,g=>hydrateTeamMembers(fn(g)));
+    if(gs)setGameState(hydrateTeamMembers(gs));
+  },[]);
 
   const currentParticipant=(gameState?.participants||[]).find(p=>p.id===myParticipantId&&p.active!==false)||null;
   const myTeamId=currentParticipant?.teamId||null;
@@ -1927,13 +1950,22 @@ function App(){
       setTimeout(()=>showToast({type:'bingo',icon:'target',title:`BINGO! ${diff}列達成！`,sub:'スコアが上がりました！'}),500);
       nextTeam=appendTeamLog(nextTeam,{type:'bingo',title:`駅ビンゴ達成！ ${diff}列`,sub:'スコア更新'});
     }
-    const updated=gameState.teams.map(t=>t.id===myTeamId?nextTeam:t);
-    await save({...gameState,teams:updated});setTab('bingo');
-  },[myTeamId,gameState,showToast,save]);
+    await updateGame(gs=>{
+      const team=(gs.teams||[]).find(t=>t.id===myTeamId);
+      if(!team||(team.stationReached||[]).includes(station.id))return gs;
+      const card=getCanonicalStationCard(team,gs?.config?.routeMode||'metro');
+      const reached=[...(team.stationReached||[]),station.id];
+      const onCard=(card||[]).some(c=>c.id===station.id);
+      const diff=checkBingo(card,new Set(reached)).length-checkBingo(card,new Set(team.stationReached||[])).length;
+      let next=appendTeamLog({...team,stationReached:reached,currentStation:station.id},{type:'s',title:`${station.name}に到着`,sub:onCard?'ビンゴカードの駅！':''});
+      if(diff>0)next=appendTeamLog(next,{type:'bingo',title:`駅ビンゴ達成！ ${diff}列`,sub:'スコア更新'});
+      return {...gs,teams:gs.teams.map(t=>t.id===myTeamId?next:t)};
+    });setTab('bingo');
+  },[myTeamId,gameState,showToast,updateGame]);
 
   const handleMissionSubmit=useCallback(async(missionId,note)=>{
     if(!myTeamId||!gameState||gameState.state!=='in_progress')return;
-    const updatedTeams=gameState.teams.map(t=>{
+    await updateGame(gameState=>({...gameState,teams:gameState.teams.map(t=>{
       if(t.id!==myTeamId)return t;
       if((t.missionReached||[]).includes(missionId))return t;
       if(!t.currentStation||(t.missionStationClaims||{})[t.currentStation])return t;
@@ -1954,22 +1986,21 @@ function App(){
         next=appendTeamLog(next,{type:'bingo',title:`ミッションBINGO！ ${diff}列`,sub:'スコア更新'});
       }
       return next;
-    });
-    await save({...gameState,teams:updatedTeams});
+    })}));
     showToast({type:'ms',icon:'target',title:'ミッションを記録しました',sub:'1駅につき1件まで'});
-  },[myTeamId,gameState,showToast,save]);
+  },[myTeamId,gameState,showToast,updateGame]);
 
   const handleFireEvent=useCallback(async(evId,action='start')=>{
     const target=(gameState.events||[]).find(e=>e.id===evId);
     if(!target)return;
-    const events=(gameState.events||[]).map(ev=>ev.id!==evId?ev:(action==='end'?{...ev,status:'done'}:{...ev,status:'active',triggeredAt:Date.now()}));
     if(action==='start')showToast({type:'ev',icon:'flash',title:'イベント発動！',sub:target.name});
     const logEntry={type:'ev',title:action==='end'?'イベント終了':'イベント発動',sub:target.name};
-    const teams=(gameState.teams||[]).map(team=>appendTeamLog(team,logEntry));
-    await save({...gameState,events,teams});
-  },[gameState,showToast,save]);
+    await updateGame(gs=>({...gs,
+      events:(gs.events||[]).map(ev=>ev.id!==evId?ev:(action==='end'?{...ev,status:'done'}:{...ev,status:'active',triggeredAt:Date.now()})),
+      teams:(gs.teams||[]).map(team=>appendTeamLog(team,logEntry))}));
+  },[gameState,showToast,updateGame]);
 
-  const handleAddEvent=useCallback(async(ev)=>{await save({...gameState,events:[...(gameState.events||[]),ev]});},[gameState,save]);
+  const handleAddEvent=useCallback(async(ev)=>{await updateGame(gs=>({...gs,events:[...(gs.events||[]),ev]}));},[updateGame]);
   const handleApproveParticipant=useCallback(async(participantId)=>{
     await updateGame(gs=>appendAuditLog({...gs,participants:(gs.participants||[]).map(p=>p.id===participantId?{...p,status:'joined'}:p)},'participant','参加申請を承認'));
   },[updateGame]);
