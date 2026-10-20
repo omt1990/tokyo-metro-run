@@ -18,7 +18,9 @@
 | **ミッション（ゲーム内）** | プレイヤーが達成するお題。ミッションビンゴのマス | `DOCS.md` §1, §4 |
 | **プロダクトミッション** | このプロダクトの存在理由 | `docs/product-mission.md` |
 
-## 現在地（2026-10-13）
+## 現在地（2026-10-21）
+
+- **2026-10-20 SEO/Search Console**：`index.html` に canonical・OGP（`assets/og.jpg`）・Twitter カード、`robots.txt`・`sitemap.xml`（トップ・terms・privacy）を追加し `firebase deploy --only hosting` で反映。Search Console（omata.yusuke1990）に `https://tokyo-metro-run.web.app/` を登録。検証メタは index.html にあり、**このプロパティ専用の値**（vercel.app の4サイトとは別の値。削除すると所有権が失効する）
 
 - 検収で見つかった致命2件（作成画面の時刻初期値が UTC で即終了／全体上書き保存で同時操作時に記録消失）を修正。
   状態変更はすべて `fbUpdate`（transaction）経由に統一した
